@@ -1,0 +1,1242 @@
+{
+    "引导_回调度": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "教程_结束复核"
+        ],
+        "next_doc": "引导段公共出口：本阶段扫完/本步做完，先做一次结束复核（满足则直接成功），不满足由 教程_结束复核 的 on_error 交回调度层"
+    },
+
+    "引导_建角色入口": {
+        "recognition": "OCR",
+        "roi": [0, 40, 1280, 560],
+        "expected": ["总队长", "形象1"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_形象1",
+            "引导_姓名框",
+            "引导_姓名确定",
+            "引导_建角色确定",
+            "引导_建角色最终确认",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：建角色页（OCR 总队长/形象1），来源帧 T1_02_形象1_B.png"
+    },
+
+    "引导_形象1": {
+        "recognition": "OCR",
+        "roi": [500, 540, 240, 120],
+        "expected": ["形象1"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [572, 576, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 600,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_建角色"
+        ],
+        "next_doc": "选形象1。绝对坐标 (592,596)，来源帧 T1_02_形象1_B.png"
+    },
+
+    "引导_姓名框": {
+        "recognition": "OCR",
+        "roi": [940, 220, 320, 90],
+        "expected": ["姓名", "请输入"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [1042, 245, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 800,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_建角色"
+        ],
+        "next_doc": "点姓名输入框唤起 IME。绝对坐标 (1062,265)，来源帧 T1_03_输入姓名_A.png"
+    },
+
+    "引导_姓名确定": {
+        "recognition": "OCR",
+        "roi": [1120, 630, 160, 90],
+        "expected": ["确定"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [1195, 650, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 800,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_建角色"
+        ],
+        "next_doc": "IME 输入栏「确定」。绝对坐标 (1215,670)，来源帧 T1_04_姓名已提交_A.png"
+    },
+
+    "引导_建角色确定": {
+        "recognition": "OCR",
+        "roi": [900, 420, 260, 100],
+        "expected": ["确定"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [1000, 444, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 900,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_建角色"
+        ],
+        "next_doc": "建角色页主「确定」（橙钮）。绝对坐标 (1020,464)，来源帧 T1_05_建角色确定_B.png"
+    },
+
+    "引导_建角色最终确认": {
+        "recognition": "OCR",
+        "roi": [400, 360, 700, 180],
+        "expected": ["确定后无法更改", "无法更改"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [770, 430, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 900,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_建角色"
+        ],
+        "next_doc": "「选择确认」弹窗的确定。绝对坐标 (790,450)，来源帧 T1_21_选择确认确定_t8.png"
+    },
+
+    "教程_跳过_建角色": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「建角色」段（形象1/姓名框/输入确定/主确定/最终确认）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_构建页入口": {
+        "recognition": "OCR",
+        "roi": [0, 60, 1280, 560],
+        "expected": ["构建1次", "核心构建", "构建10次"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_构建1次",
+            "引导_确认构建费用闸",
+            "引导_确认构建",
+            "引导_开匣",
+            "引导_揭示核心",
+            "引导_返回_构建页",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：核心构建页（OCR 构建1次/核心构建），来源帧 T4_03_build_once_A.png"
+    },
+
+    "引导_构建1次": {
+        "recognition": "OCR",
+        "roi": [740, 610, 220, 90],
+        "expected": ["构建1次"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 900,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_构建"
+        ],
+        "next_doc": "构建1次（识别即点）。原坐标 (825,646)，来源帧 T4_03_build_once_A.png"
+    },
+
+    "引导_确认构建费用闸": {
+        "recognition": "OCR",
+        "roi": [700, 480, 220, 90],
+        "expected": ["确定"],
+        "threshold": 0.3,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "cost_guard",
+                "custom_action_param": {
+                    "roi": [400, 280, 600, 300],
+                    "allow": ["构建蓝图"],
+                    "deny": ["粲晶", "星贸凭证", "¥", "$"],
+                    "unknown": "allow",
+                    "on_deny": ["教程_跳过_构建"],
+                    "reason": "构建确认框出现付费货币，拒绝盲确认"
+                }
+            }
+        },
+        "timeout": 8000,
+        "next": [
+            "引导_确认构建"
+        ],
+        "on_error": [
+            "引导_确认构建"
+        ],
+        "next_doc": "2026-11-03 付费闸：确认框出现粲晶/星贸凭证/¥/$ 且无「构建蓝图」时改道跳过；否则继续模板确认"
+    },
+
+    "引导_确认构建": {
+        "recognition": "TemplateMatch",
+        "template": "Tutorial/BuildConfirm.png",
+        "roi": [700, 480, 220, 90],
+        "threshold": 0.85,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_构建"
+        ],
+        "next_doc": "「是否花费」确认框的确定（模板自检 1.000/1.000/≤0.52），来源帧 T4_03_build_once_A.png"
+    },
+
+    "引导_开匣": {
+        "recognition": "OCR",
+        "roi": [400, 360, 520, 220],
+        "expected": ["核心储匣", "开匣"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [611, 449, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_构建"
+        ],
+        "next_doc": "点开匣。绝对坐标 (631,469)，来源帧 T4_05_open_core_A.png"
+    },
+
+    "引导_揭示核心": {
+        "recognition": "OCR",
+        "roi": [300, 100, 700, 460],
+        "expected": ["RARE", "揭示"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [618, 249, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1500,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_构建"
+        ],
+        "next_doc": "揭示核心（新角色卡）。绝对坐标 (638,269)，来源帧 T4_06_core_reveal_A.png"
+    },
+
+    "引导_返回_构建页": {
+        "recognition": "OCR",
+        "roi": [700, 610, 260, 90],
+        "expected": ["构建1次"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [49, 18, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_构建"
+        ],
+        "next_doc": "揭示完返回主界面：以「构建1次」仍在画面（说明还在构建页）为闸，点左上返回。绝对坐标 (69,38)，来源帧 T4_08_back_base_A.png"
+    },
+
+    "教程_跳过_构建": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「构建」段（构建1次/确认构建/开匣/揭示/返回）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_编队页入口": {
+        "recognition": "OCR",
+        "roi": [0, 60, 1280, 560],
+        "expected": ["第1战队", "上阵"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_切平面",
+            "引导_空槽",
+            "引导_拖入队伍",
+            "引导_点赤狼",
+            "引导_关浮层",
+            "引导_调整站位",
+            "引导_自动设置",
+            "引导_返回_编队页",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：编队页（OCR 第1战队/上阵），来源帧 T4_09_team_A.png / T6_78_entry04.png。**进阶段先切「平面」**（引导_切平面），之后的格子定位与拖拽都在平面模式下进行"
+    },
+
+    "引导_切平面": {
+        "recognition": "OCR",
+        "roi": [492, 652, 105, 29],
+        "expected": ["平面"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 2,
+        "timeout": 3000,
+        "post_delay": 1800,
+        "next": [
+            "引导_切平面_确认"
+        ],
+        "on_error": [
+            "引导_编队页入口"
+        ],
+        "next_doc": "编队一律先切平面。OCR「平面」标签，roi [492,652,105,29] 取自 1280×720 原始帧 T4_10_slot_A.png 底部切换控件左半（右半「立体」≈[596,652,64,30]，同帧实测）。已处于平面时点同一个标签无副作用，所以不做高亮预判、直接点一次；找不到标签（如 0-4 编队页没有该控件）就放弃切换、按原步骤继续。平面/立体差异：平面是 2D 网格、格子位置固定，立体是 3D 摆位、角色位置与朝向会变"
+    },
+    "引导_切平面_确认": {
+        "recognition": "ColorMatch",
+        "roi": [596, 652, 60, 30],
+        "lower": [95, 92, 96],
+        "upper": [140, 138, 140],
+        "count": 100,
+        "inverse": true,
+        "action": "DoNothing",
+        "max_hit": 3,
+        "timeout": 2500,
+        "next": [
+            "引导_编队页入口"
+        ],
+        "on_error": [
+            "引导_切平面",
+            "引导_编队页入口"
+        ],
+        "next_doc": "确认已切到平面：立体态的「立体」半区是高亮浅灰，同帧实测 roi [596,652,60,30] 内有 669 个像素落在 RGB [95,92,96]~[140,138,140]，平面半区同区间 0 个；切到平面后立体半区变暗 → inverse 成立。仍为立体时命中 669 ≥ count 100，inverse 失败 → on_error 再点一次平面（引导_切平面 max_hit=2 兜住），第二次仍不成立就放行，不把教程卡死在切换上。颜色阈值全部来自原始帧 T4_10_slot_A.png 实测，未做任何比例换算"
+    },
+
+    "引导_空槽": {
+        "recognition": "DirectHit",
+        "roi": [515, 395, 40, 40],
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 900,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "点第 3 个空槽。绝对坐标 (535,415)，来源帧 T4_10_slot_A.png（编队页阶段内执行，不会在其他页面触发）。TODO(平面坐标)：该帧是**立体**模式，改成先切平面后，3×3 格子会重排，此处必须在平面模式的 1280×720 原始帧上重测，待实机补帧后更新"
+    },
+
+    "引导_拖入队伍": {
+        "recognition": "DirectHit",
+        "roi": [830, 100, 60, 60],
+        "action": "Swipe",
+        "begin": [850, 119],
+        "end": [631, 369],
+        "duration": 600,
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "把赤狼拖进空槽。绝对坐标 (850,119)→(631,369)，来源帧 T4_11_drag_A.png。TODO(平面坐标)：该帧是**立体**模式，切平面后端点是 2D 格子，必须在平面模式原始帧上重测"
+    },
+
+    "引导_点赤狼": {
+        "recognition": "OCR",
+        "roi": [560, 200, 260, 140],
+        "expected": ["赤狼"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 900,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "点队员赤狼打开核心共鸣浮层（识别即点），原坐标 (644,260)，来源帧 T4_12_select_A.png"
+    },
+
+    "引导_关浮层": {
+        "recognition": "DirectHit",
+        "roi": [898, 448, 4, 4],
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 800,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "点空白关浮层。无副作用空白点击，按规范用 4×4 ROI 代替绝对 target（中心 900,450），来源帧 T4_13_overlay_closed_A.png"
+    },
+
+    "引导_调整站位": {
+        "recognition": "DirectHit",
+        "roi": [620, 270, 60, 60],
+        "action": "Swipe",
+        "begin": [642, 292],
+        "end": [452, 210],
+        "duration": 3000,
+        "max_hit": 1,
+        "timeout": 10000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "调整站位：短 swipe/draganddrop 无效，必须 3000ms 长按拖拽。绝对坐标 (642,292)→(452,210)，来源帧 T4_15_swipe_A.png（战力 1311→1392）。TODO(平面坐标)：该帧是**立体**模式，切平面后角色落点会变，必须在平面模式原始帧上重测"
+    },
+
+    "引导_自动设置": {
+        "recognition": "OCR",
+        "roi": [1040, 370, 200, 80],
+        "expected": ["自动设置"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "0-4 编队页「自动设置」入口（识别即点），原坐标约 (1128,403)，来源帧 T6_78_entry04.png"
+    },
+
+    "引导_返回_编队页": {
+        "recognition": "DirectHit",
+        "roi": [74, 20, 40, 40],
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_编队"
+        ],
+        "next_doc": "编队页左上返回。绝对坐标 (94,40)，来源帧 T4_21_back_A.png"
+    },
+
+    "教程_跳过_编队": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「编队」段（空槽/拖入/点赤狼/关浮层/调整站位/自动设置/返回）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_主界面入口": {
+        "recognition": "OCR",
+        "roi": [940, 600, 180, 110],
+        "expected": ["补给站"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_构建入口",
+            "引导_编队入口",
+            "引导_出击",
+            "引导_任务入口",
+            "引导_补给站入口",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：主界面（OCR 补给站导航）。步骤按教程顺序排：构建→编队→出击→任务→补给站；各入口 max_hit 用尽后自动跳过，不会往返死循环"
+    },
+
+    "引导_构建入口": {
+        "recognition": "OCR",
+        "roi": [857, 600, 170, 110],
+        "expected": ["构建"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_主界面"
+        ],
+        "next_doc": "主界面导航「构建」（识别即点，框中心），来源帧 T4_02_build_A.png"
+    },
+
+    "引导_编队入口": {
+        "recognition": "OCR",
+        "roi": [683, 600, 170, 110],
+        "expected": ["编队"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_主界面"
+        ],
+        "next_doc": "主界面导航「编队」（识别即点），来源帧 T4_09_team_A.png"
+    },
+
+    "引导_出击": {
+        "recognition": "OCR",
+        "roi": [1047, 533, 200, 173],
+        "expected": ["出击"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 4,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_主界面"
+        ],
+        "next_doc": "主界面「出击」（识别即点）。max_hit=4：教程需要四次出征（0-1/0-2/0-3 教学战 + 0-4 拿交接语），不是无脑重复点，超出才算异常"
+    },
+
+    "引导_任务入口": {
+        "recognition": "OCR",
+        "roi": [600, 600, 167, 110],
+        "expected": ["任务"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 2,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_主界面"
+        ],
+        "next_doc": "主界面导航「任务」（识别即点），来源帧 T6_85_home2.png"
+    },
+
+    "引导_补给站入口": {
+        "recognition": "OCR",
+        "roi": [940, 600, 180, 110],
+        "expected": ["补给站"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_主界面"
+        ],
+        "next_doc": "主界面「补给站」（新手池入口，手指指示位）。原坐标 (1031,619)，来源帧 T6_85_home2.png"
+    },
+
+    "教程_跳过_主界面": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「主界面」段（构建/编队/出击/任务/补给站入口）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_出击选择入口": {
+        "recognition": "OCR",
+        "roi": [0, 60, 1280, 600],
+        "expected": ["主线剧情", "碎星前哨"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_主线剧情",
+            "引导_碎星前哨",
+            "引导_选关卡_01",
+            "引导_选关卡_02",
+            "引导_选关卡_03",
+            "引导_选关卡_04",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：探索选择/章节/关卡列表（OCR 主线剧情/碎星前哨），来源帧 T4_23_storyline_A.png / T6_76_open04.png"
+    },
+
+    "引导_主线剧情": {
+        "recognition": "OCR",
+        "roi": [520, 530, 300, 100],
+        "expected": ["主线剧情"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_出击"
+        ],
+        "next_doc": "探索选择页「主线剧情」（识别即点），原坐标 (651,571)，来源帧 T4_23_storyline_A.png"
+    },
+
+    "引导_碎星前哨": {
+        "recognition": "OCR",
+        "roi": [480, 320, 340, 130],
+        "expected": ["碎星前哨"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_出击"
+        ],
+        "next_doc": "章节页「碎星前哨」（识别即点），原坐标 (640,380)，来源帧 T4_25_chapter_A.png"
+    },
+
+    "引导_选关卡_01": {
+        "recognition": "OCR",
+        "roi": [180, 270, 240, 240],
+        "expected": ["0-1"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_出击"
+        ],
+        "next_doc": "关卡列表选 0-1（识别即点）。原坐标 (272,340)，来源帧 T4_26_node_A.png"
+    },
+
+    "引导_选关卡_02": {
+        "recognition": "OCR",
+        "roi": [180, 270, 240, 300],
+        "expected": ["0-2"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_出击"
+        ],
+        "next_doc": "关卡列表选 0-2（识别即点，0-1 用尽后才会轮到）。原坐标 (272,340) 附近，来源帧 T6_01_open02.png"
+    },
+
+    "引导_选关卡_03": {
+        "recognition": "OCR",
+        "roi": [180, 270, 240, 300],
+        "expected": ["0-3"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_出击"
+        ],
+        "next_doc": "关卡列表选 0-3（识别即点）。原坐标 (272,340) 附近，来源帧 T6_30_open03.png"
+    },
+
+    "引导_选关卡_04": {
+        "recognition": "OCR",
+        "roi": [180, 270, 240, 300],
+        "expected": ["0-4"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_出击"
+        ],
+        "next_doc": "关卡列表选 0-4（拿交接语必须进它的编队页）。绝对坐标 (260,401)，来源帧 T6_76_open04.png"
+    },
+
+    "教程_跳过_出击": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「出击」段（主线剧情/碎星前哨/选关卡 0-1~0-4）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_关卡入口": {
+        "recognition": "OCR",
+        "roi": [600, 540, 670, 180],
+        "expected": ["开始战斗", "开始行动"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_编队不足进入",
+            "引导_战力不足进入",
+            "引导_开始战斗",
+            "引导_开始行动",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：关卡详情/编队确认页（OCR 开始战斗/开始行动），来源帧 T4_27_start_A.png / T6_78_entry04.png"
+    },
+
+    "引导_编队不足进入": {
+        "recognition": "OCR",
+        "roi": [200, 140, 880, 200],
+        "expected": ["编队不足", "当前编队不足5人"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [791, 429, 40, 40],
+        "max_hit": 2,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_关卡"
+        ],
+        "next_doc": "「当前编队不足5人」弹窗的「进入战斗」。绝对坐标 (811,449)，来源帧 T6_42_enter03.png"
+    },
+
+    "引导_战力不足进入": {
+        "recognition": "OCR",
+        "roi": [200, 180, 880, 420],
+        "expected": ["战力不足", "养成较低", "当前战力"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [781, 504, 40, 40],
+        "max_hit": 2,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_关卡"
+        ],
+        "next_doc": "「战力不足」弹窗的「进入战斗」。绝对坐标 (801,524)，来源帧 T6_42_enter03.png"
+    },
+
+    "引导_开始战斗": {
+        "recognition": "OCR",
+        "roi": [950, 600, 300, 110],
+        "expected": ["开始战斗"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 4,
+        "timeout": 8000,
+        "post_delay": 1500,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_关卡"
+        ],
+        "next_doc": "关卡详情「开始战斗」，教程里第 1 次只出引导气泡，需要再点一次。原坐标 (1075,653)，来源帧 T4_27_start_A.png；max_hit=4 覆盖 0-1~0-4 各两次"
+    },
+
+    "引导_开始行动": {
+        "recognition": "OCR",
+        "roi": [900, 610, 340, 110],
+        "expected": ["开始行动"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 4,
+        "timeout": 8000,
+        "post_delay": 1500,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_关卡"
+        ],
+        "next_doc": "编队确认页「开始行动」（真正进场）。原坐标 (1029,655)，来源帧 T6_78_entry04.png"
+    },
+
+    "教程_跳过_关卡": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「关卡」段（编队不足/战力不足/开始战斗/开始行动）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_技能设置入口": {
+        "recognition": "OCR",
+        "roi": [700, 540, 500, 160],
+        "expected": ["保存并应用"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_保存技能设置",
+            "引导_返回_技能设置",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：自动战斗技能设置页（OCR 保存并应用），来源帧 T6_79_autoset.png；交接语就在本页气泡里（调度层 教程_交接语 负责识别）"
+    },
+
+    "引导_保存技能设置": {
+        "recognition": "OCR",
+        "roi": [780, 570, 360, 100],
+        "expected": ["保存并应用"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 2,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_技能设置"
+        ],
+        "next_doc": "点「保存并应用」（识别即点，框中心）。原坐标 (920,610)，来源帧 T6_79_autoset.png；max_hit=2 对应教程要求保存两次"
+    },
+
+    "引导_返回_技能设置": {
+        "recognition": "DirectHit",
+        "roi": [46, 28, 40, 40],
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_技能设置"
+        ],
+        "next_doc": "技能设置页左上返回。绝对坐标 (66,48)，来源帧 T6_79_autoset.png"
+    },
+
+    "教程_跳过_技能设置": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「技能设置」段（保存并应用/返回）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_任务页入口": {
+        "recognition": "OCR",
+        "roi": [0, 40, 1280, 560],
+        "expected": ["一键领取", "常规任务"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_一键领取",
+            "引导_领取奖励",
+            "引导_返回_任务页",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：任务页（OCR 一键领取/常规任务），来源帧 T6_33_claim.png"
+    },
+
+    "引导_一键领取": {
+        "recognition": "OCR",
+        "roi": [1040, 60, 240, 90],
+        "expected": ["一键领取"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 2,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_任务"
+        ],
+        "next_doc": "任务页「一键领取」（识别即点）。原坐标 (1140,100)，来源帧 T6_33_claim.png"
+    },
+
+    "引导_领取奖励": {
+        "recognition": "OCR",
+        "roi": [1060, 230, 220, 420],
+        "expected": ["领取"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 3,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_任务"
+        ],
+        "next_doc": "任务条目「领取」（识别即点）。原坐标约 (1162,286)，来源帧 T6_33_claim.png；一键领取用尽后才轮到逐条领取"
+    },
+
+    "引导_返回_任务页": {
+        "recognition": "DirectHit",
+        "roi": [48, 20, 40, 40],
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_任务"
+        ],
+        "next_doc": "任务页左上返回。绝对坐标 (68,40)，来源帧 T6_33_claim.png"
+    },
+
+    "教程_跳过_任务": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「任务」段（一键领取/领取/返回）动作失败：跳过本段回调度重扫"
+    },
+
+    "引导_补给站页入口": {
+        "recognition": "OCR",
+        "roi": [800, 620, 460, 90],
+        "expected": ["构建10次"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_补给站_一次性闸",
+            "引导_十连免费池检查",
+            "引导_构建10次",
+            "引导_确认免费十连",
+            "引导_跳过演出",
+            "引导_替换记录",
+            "引导_确认替换",
+            "引导_使用记录结束",
+            "引导_确认使用记录",
+            "引导_回调度"
+        ],
+        "next_doc": "阶段入口：补给站特装构建页（OCR 构建10次），来源帧 T6_87_build10.png。本入口会在每轮调度重复命中（这是阶段推进机制，不能加 max_hit）；停止交给首个子节点「引导_补给站_一次性闸」，已抽过则整段跳过"
+    },
+
+    "引导_补给站_一次性闸": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "tutorial_once",
+                "custom_action_param": {
+                    "operation": "check",
+                    "key": "tutorial_build10",
+                    "limit": 1,
+                    "on_done": ["教程_跳过_补给站"],
+                    "on_unknown": ["教程_跳过_补给站"],
+                    "reason": "本账号已完成教程免费十连"
+                }
+            }
+        },
+        "next": [
+            "引导_十连免费池检查"
+        ],
+        "next_doc": "2026-11-03 P0 停止判据「达到 N 次」：跨任务持久化标记，已做过 1 次免费十连则整段跳过，不随任务重跑再次抽卡。2026-11-08 P-014：状态键带账号 UID（实例:UID）；拿不到 UID 或旧键归属不明时 fail-safe 跳过本段并记事件（on_unknown，不猜账号）"
+    },
+
+    "引导_十连免费池检查": {
+        "recognition": "OCR",
+        "roi": [0, 380, 1280, 300],
+        "expected": ["10连构建", "★新手"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next": [
+            "引导_构建10次"
+        ],
+        "next_doc": "2026-11-03 P0 停止判据「免费标识消失」：点击构建10次前必须看到新手免费池标识（「10连构建中选择一次构建结果」或「★新手」）。普通特装/付费池不出现这两个锚点 → 整段跳过，不抽"
+    },
+
+    "引导_记录结果页入口": {
+        "recognition": "OCR",
+        "roi": [0, 400, 1280, 280],
+        "expected": ["替换记录", "使用记录结束", "本次构建"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "引导_替换记录",
+            "引导_确认替换",
+            "引导_使用记录结束",
+            "引导_确认使用记录",
+            "引导_回调度"
+        ],
+        "on_error": [
+            "引导_回调度"
+        ],
+        "next_doc": "2026-11-03 P0 补断裂点：十连演出后的结果页没有「构建10次」，原补给站页入口无法命中，导致替换记录/使用记录结束不可达、抽卡段永远收不了尾。新增本入口直接按结果页锚点进入收尾链，来源帧 T6_91_after10.png / T6_92_replace.png / T6_94_end_record.png"
+    },
+
+    "引导_构建10次": {
+        "recognition": "OCR",
+        "roi": [940, 630, 220, 90],
+        "expected": ["构建10次"],
+        "threshold": 0.3,
+        "action": "Click",
+        "repeat": 2,
+        "repeat_delay": 1200,
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "「构建10次」点两下（教程第 1 下只出气泡）。原坐标 (1044,675)，来源帧 T6_87_build10.png"
+    },
+
+    "引导_确认免费十连": {
+        "recognition": "OCR",
+        "roi": [450, 290, 420, 110],
+        "expected": ["不需要任何费用", "不消耗任何资源"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [770, 510, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 2000,
+        "next": [
+            "引导_标记已十连"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "「本次构建不需要任何费用」弹窗的确定。绝对坐标 (790,530)，来源帧 T6_88_build10b.png。只在读到「不需要任何费用」时才点，避免误触付费确认。这是 P1 付费闸：付费确认框不含该文案 → on_error 整段跳过"
+    },
+
+    "引导_标记已十连": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "tutorial_once",
+                "custom_action_param": {
+                    "operation": "mark",
+                    "key": "tutorial_build10",
+                    "reason": "教程免费十连已确认"
+                }
+            }
+        },
+        "next": [
+            "引导_回调度"
+        ],
+        "next_doc": "2026-11-03 P0 计数闸：确认免费十连后立刻落盘计数，此后无论任务重跑多少次，一次性闸都会跳过抽卡段"
+    },
+
+    "引导_跳过演出": {
+        "recognition": "OCR",
+        "roi": [1080, 0, 200, 90],
+        "expected": ["跳过"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 2,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "十连演出「跳过」。原坐标 (1162,43)，来源帧 T6_89_build_result.png"
+    },
+
+    "引导_替换记录": {
+        "recognition": "OCR",
+        "roi": [980, 410, 240, 90],
+        "expected": ["替换记录"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "结果页「替换记录」（识别即点）。原坐标 (1094,452)，来源帧 T6_92_replace.png"
+    },
+
+    "引导_确认替换": {
+        "recognition": "OCR",
+        "roi": [700, 410, 260, 90],
+        "expected": ["确定"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "「是否替换」弹窗的确定（识别即点）。原坐标 (790,450)，来源帧 T6_92_replace.png"
+    },
+
+    "引导_使用记录结束": {
+        "recognition": "OCR",
+        "roi": [360, 590, 300, 110],
+        "expected": ["使用记录结束", "使用记录"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "「使用记录结束」（识别即点）。原坐标 (469,641)，来源帧 T6_94_end_record.png"
+    },
+
+    "引导_确认使用记录": {
+        "recognition": "OCR",
+        "roi": [700, 480, 260, 100],
+        "expected": ["确定"],
+        "threshold": 0.3,
+        "action": "Click",
+        "target": [770, 510, 40, 40],
+        "max_hit": 1,
+        "timeout": 8000,
+        "post_delay": 1200,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "教程_跳过_补给站"
+        ],
+        "next_doc": "「使用记录结束」确认弹窗的确定。绝对坐标 (790,530)，来源帧 T6_95_final_build.png"
+    },
+
+    "教程_跳过_补给站": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 400,
+        "timeout": 5000,
+        "next": [
+            "引导_回调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「补给站」段（构建10次/确认免费/跳过演出/替换记录/确认替换/使用记录结束/确认）动作失败：跳过本段回调度重扫"
+    }
+}

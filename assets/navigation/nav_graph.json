@@ -1,0 +1,7720 @@
+{
+  "schema": "crosscore-nav-graph/1",
+  "generated_at": "2026-11-08（第十一批：体力缓慢补给 18 分钟/点实测、通行证领完态、活动 4 页 + 建筑列表转 A）",
+  "viewport": "1280x720 横屏，MuMu JCZX 实例，B服 com.megagame.crosscore.bilibili",
+  "purpose": "界面导航图（机器可读）。仅供后续 pipeline 复用与导航；不改动现有 pipeline 行为。",
+  "sources": [
+    "assets/resource/pipeline/base/*.json（节点 next/on_error 与识别参数，一手来源）",
+    "assets/resource/pipeline/base/界面导航.json（界面识别器与导航边）",
+    "assets/navigation/page_graph.json（旧录制图，仅作交叉参考，未被本文件修改）",
+    "docs/coords.md、docs/文件地图.md、docs/问题登记.md、docs/主线.md、docs/基建.md、docs/arena.md",
+    "docs/ondevice-checklist.md、docs/交接-四任务迁移实机验证.md、docs/芯片方案与库存.md"
+  ],
+  "evidence_levels": {
+    "A": "已实测：docs 中有该界面/链路在本机 1280x720 上的实跑记录（含截图或资源对账），且识别判据来自现行 pipeline。",
+    "B": "代码里有：pipeline 中存在识别节点与入口，但 docs 无该界面的实跑记录（或仅有离线/录制证据）。",
+    "C": "判据弱或缺失：页面无独立标题判据（只有按钮/列表项/DirectHit），或入口边缺失、仅有录制图坐标。"
+  },
+  "global_returns": {
+    "home_button": {
+      "template": [
+        "StartUp/HomeButton.png",
+        "StartUp/HomeButton1.png"
+      ],
+      "roi": [
+        180,
+        10,
+        100,
+        70
+      ],
+      "action": "Click",
+      "effect": "任意子界面左上角返回主界面（推荐首选）",
+      "source": "通用.json#子任务_点击首页按钮"
+    },
+    "back_button": {
+      "template": "StartUp/BackButton.png",
+      "roi": [
+        14,
+        10,
+        126,
+        72
+      ],
+      "action": "Click",
+      "effect": "逐级返回；主线结算退出只允许用 BACK（docs/问题登记.md）",
+      "source": "通用.json#子任务_点击返回"
+    },
+    "return_home_text": {
+      "template": "返回主页.png",
+      "roi": [
+        164,
+        21,
+        112,
+        51
+      ],
+      "action": "Click",
+      "effect": "活动/周本等二级页的回主页按钮",
+      "source": "通用.json#通用-返回主页"
+    },
+    "jumpback_chain": [
+      "[JumpBack]子任务_点击首页按钮",
+      "[JumpBack]子任务_点击返回",
+      "[JumpBack]子任务_获得物品",
+      "[JumpBack]子任务_点击取消",
+      "[JumpBack]子任务_点击确认",
+      "[JumpBack]子任务_点击同意",
+      "[JumpBack]子任务_关闭公告",
+      "[JumpBack]子任务_关闭周年公告",
+      "[JumpBack]子任务_关闭促销弹窗"
+    ],
+    "home_confirmation": {
+      "method": "OCR",
+      "expected": [
+        "基地",
+        "任务",
+        "编队"
+      ],
+      "roi": [
+        493,
+        580,
+        773,
+        137
+      ],
+      "source": "界面导航.json#导航识别_主界面"
+    }
+  },
+  "nodes": {
+    "startup_neri": {
+      "name": "启动页（NERI）",
+      "group": "启动",
+      "arrival": {
+        "method": "TemplateMatch",
+        "template": "StartUp/NERI.png",
+        "roi": [
+          325,
+          214,
+          662,
+          354
+        ]
+      },
+      "return": {
+        "method": "none",
+        "note": "启动页无返回，向后推进"
+      },
+      "entry": null,
+      "evidence": "A",
+      "evidence_note": "2026-11-01 冷启动实跑（22 节点）；ondevice-checklist 步骤 1",
+      "source": "启动游戏.json#启动角色界面"
+    },
+    "startup_start": {
+      "name": "开始游戏页（含公告/签到弹窗）",
+      "group": "启动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "开始游戏"
+        ],
+        "roi": [
+          580,
+          462,
+          121,
+          40
+        ]
+      },
+      "return": {
+        "method": "none"
+      },
+      "entry": {
+        "from": "startup_neri",
+        "action": "点击开始游戏",
+        "action_node": "开始游戏"
+      },
+      "evidence": "A",
+      "evidence_note": "启动游戏实跑成功；同页弹窗由 签到/关闭公告/关闭周年公告 处理",
+      "source": "启动游戏.json#开始游戏、#签到、#子任务_关闭公告"
+    },
+    "home": {
+      "name": "主界面（主页）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "基地",
+          "任务",
+          "编队"
+        ],
+        "roi": [
+          493,
+          580,
+          773,
+          137
+        ]
+      },
+      "return": {
+        "method": "fixed",
+        "note": "主界面为所有返回路径的终点；用 子任务_点击首页按钮 / 通用-返回主页"
+      },
+      "entry": {
+        "from": "startup_start",
+        "action": "点击后等 首页标志1(补给站) 或 首页标志2",
+        "action_node": "首页标志1/首页标志2"
+      },
+      "evidence": "A",
+      "evidence_note": "多任务实机确认（启动/领奖/主线/基建/每日探索）",
+      "source": "界面导航.json#导航识别_主界面；启动游戏.json#首页标志1/2"
+    },
+    "sortie_submenu": {
+      "name": "出击二级菜单",
+      "group": "出击",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "主线剧情",
+          "每日探索",
+          "模拟军演",
+          "活动探索"
+        ],
+        "roi": [
+          350,
+          40,
+          850,
+          620
+        ]
+      },
+      "return": {
+        "method": "home_button",
+        "note": "首页按钮或 BACK"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击出击",
+        "action_node": "导航边_主界面到出击",
+        "expected": [
+          "出击"
+        ],
+        "roi": [
+          1047,
+          533,
+          200,
+          173
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "竞技场/每日探索实机多次经过",
+      "source": "界面导航.json#导航识别_出击二级菜单、#导航边_主界面到出击"
+    },
+    "base_overview": {
+      "name": "基地总览",
+      "group": "基建",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "基地建造",
+          "驻员状况"
+        ],
+        "roi": [
+          30,
+          430,
+          350,
+          250
+        ]
+      },
+      "return": {
+        "method": "home_button",
+        "note": "基地按钮回主界面；子面板用 BACK"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击基地",
+        "action_node": "导航边_主界面到基地",
+        "expected": [
+          "基地"
+        ],
+        "roi": [
+          527,
+          600,
+          153,
+          110
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "基建/芯片实机多次命中（基地 0.999、Infr_JD 0.895）",
+      "source": "界面导航.json#导航识别_基地总览；基建.json#基地"
+    },
+    "base_buildings": {
+      "name": "基地建筑列表",
+      "group": "基建",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "行星指挥部",
+          "原料交易所",
+          "建筑已满级"
+        ],
+        "roi": [
+          100,
+          100,
+          1080,
+          560
+        ]
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(54,37) 回基地总览；或「首页」(200,44) 直接回主界面（2026-11-08 实测）"
+      },
+      "entry": {
+        "from": "base_overview",
+        "action": "点左下「基地建造」",
+        "click": [
+          132,
+          530
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-08 15:03 实机：OCR 建筑已满级 0.994~0.996 / 行星指挥部 0.996 / 原料交易所 0.999；左页签 全部/生产/生活；7 栋建筑全部 LV.10（宿舍 LV.1）且均「建筑已满级」；未点任何建造/升级/加速",
+      "source": "界面导航.json#导航识别_基地建筑列表",
+      "discovered_by_explore": true
+    },
+    "base_staff": {
+      "name": "驻员状况面板",
+      "group": "基建",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "驻员预设"
+        ],
+        "roi": [
+          900,
+          80,
+          340,
+          580
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "base_overview",
+        "action": "点击驻员状况",
+        "action_node": "基建_驻员状况",
+        "expected": [
+          "驻员状况"
+        ],
+        "roi": [
+          54,
+          554,
+          176,
+          89
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 基建换班实机；docs/基建.md §1.1",
+      "source": "界面导航.json#导航识别_驻员状况；基建.json#基建_驻员状况"
+    },
+    "base_build_detail": {
+      "name": "设施详情页（换班用）",
+      "group": "基建",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "设施详情"
+        ],
+        "roi": [
+          240,
+          77,
+          188,
+          75
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "base_staff",
+        "action": "点击设施行/预设按钮",
+        "action_node": "基建_换班1"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 基建换班实机（设施详情 + 预设切换四层复核）",
+      "source": "基建.json#基建_换班1/2/3"
+    },
+    "order_own": {
+      "name": "自己的订单库",
+      "group": "基建",
+      "arrival": {
+        "method": "Custom",
+        "custom_recognition": "base_order_state",
+        "note": "等价 OCR 锚点 好友交付记录/制作素材 [20,60,180,460]"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "或用 完成返回主界面→首页按钮"
+      },
+      "entry": {
+        "from": "base_overview",
+        "action": "点原料交易所建筑图标",
+        "click": [
+          1128,
+          326
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:09 实机：基地总览点原料交易所图标 (1128,326) → 订单库同页上半区「制作素材」0.997 / 10级订单库 0.989 / 11-11 0.961 / 刷新剩余时间 0.970；4 个「交付」按钮未点",
+      "source": "基建-订单库.json#BaseOrderTask；界面导航.json#导航识别_自己的订单库"
+    },
+    "order_friend": {
+      "name": "好友订单库",
+      "group": "基建",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "好友交付次数共享",
+          "点赞"
+        ],
+        "roi": [
+          40,
+          40,
+          1200,
+          650
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "order_own",
+        "action": "切好友列表",
+        "action_node": "订单库_好友列表首位"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:09 实机：同一订单库页下半区「好友交付记录」0.997 / 「选择好友」0.995；交付按钮未点（与 order_own 同页，分区判据不同）",
+      "source": "界面导航.json#导航识别_好友订单库；基建-订单库.json#订单库_好友列表首位"
+    },
+    "missions_daily": {
+      "name": "任务页-日常",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "日常"
+        ],
+        "roi": [
+          20,
+          80,
+          240,
+          240
+        ],
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击任务",
+        "action_node": "领奖_进每日任务",
+        "expected": [
+          "任务"
+        ],
+        "roi": [
+          640,
+          600,
+          120,
+          100
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 领取奖励实跑（每日一键领取 ×2）",
+      "source": "界面导航.json#导航识别_任务日常；领取奖励.json#领奖_进每日任务"
+    },
+    "missions_weekly": {
+      "name": "任务页-周常",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "每周一3点重置，点击按钮可前往或领取",
+          "周常",
+          "通关任意关卡20次"
+        ],
+        "roi": [
+          650,
+          185,
+          560,
+          110
+        ],
+        "measured": {
+          "每周一3点重置…": 0.984,
+          "通关任意关卡20次": 0.997
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→主界面（任务页实测）"
+      },
+      "entry": {
+        "from": "missions_daily",
+        "action": "点左侧「周常」",
+        "action_node": null,
+        "expected": [
+          "周常"
+        ],
+        "roi": [
+          20,
+          300,
+          160,
+          40
+        ],
+        "click": [
+          63,
+          324
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:40 实机；周常页签 + 每周重置文案；未领取",
+      "source": "界面导航.json#导航识别_任务周常 + 实机"
+    },
+    "missions_main": {
+      "name": "任务页-主线",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "主线",
+          "通关7-12",
+          "领取"
+        ],
+        "roi": [
+          20,
+          200,
+          280,
+          260
+        ],
+        "measured": {
+          "主线": 0.998,
+          "通关7-12【无光废墟】": 0.987
+        }
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "missions_daily",
+        "action": "点「剧情任务」组下的「主线」",
+        "action_node": null,
+        "expected": [
+          "主线"
+        ],
+        "roi": [
+          20,
+          340,
+          160,
+          40
+        ],
+        "click": [
+          68,
+          362
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:41 实机；主线页签高亮 + 通关7-12 任务行；未领取",
+      "source": "界面导航.json#导航识别_任务主线 + 实机"
+    },
+    "missions_side": {
+      "name": "任务页-支线",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "支线",
+          "通关鼓军嵌合第3层5次",
+          "前往"
+        ],
+        "roi": [
+          20,
+          200,
+          300,
+          260
+        ],
+        "measured": {
+          "支线": 0.999,
+          "通关鼓军嵌合第3层5次": 0.996
+        }
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "missions_daily",
+        "action": "点「剧情任务」组下的「支线」",
+        "action_node": null,
+        "expected": [
+          "支线"
+        ],
+        "roi": [
+          20,
+          415,
+          160,
+          40
+        ],
+        "click": [
+          65,
+          435
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:41 实机；支线页签高亮 + 鼓军嵌合任务行；未领取",
+      "source": "界面导航.json#导航识别_任务支线 + 实机"
+    },
+    "mail": {
+      "name": "邮件页",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "TemplateMatch",
+        "template": "Infrastructures/mail.png",
+        "roi": [
+          1025,
+          15,
+          120,
+          50
+        ],
+        "page_title_weak": true,
+        "note": "页内实锚点为一键领取 [200,590,220,80] 或 无邮件 NoMail.png"
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击右上邮件图标",
+        "action_node": "领奖_进邮件",
+        "template": "Infrastructures/mail.png",
+        "roi": [
+          1025,
+          15,
+          120,
+          50
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 领取奖励实跑（邮件已领空场景，35 节点）；2026-11-05 16:02 单封领取实跑（+2000 金币，已领取态复现）",
+      "source": "领取奖励.json#领奖_进邮件、#邮件_一键领取；ondevice-checklist 步骤 2",
+      "claim_note": {
+        "single": "单封「领取」(1139,632)：助战奖励 → 金币 +2000，按钮变「删除」",
+        "one_click": "「一键领取」(313,637)；2026-11-05 代码核对确认覆盖全邮箱可领附件，优先使用（见 one_click_scope）",
+        "claimed_state": "底部奖励条出现「已领取」[488,624,54,19] 0.992；顶部「待领取邮件：0」",
+        "unclaimed_state": "顶部「待领取邮件」显示非 0 计数；右侧按钮文字为「领取」",
+        "resource_delta": "金币 1310178 → 1312178（+2000，同帧顶部读数）",
+        "mail_count": "30/200（2026-11-06 复核：39→30 为过期邮件自动消失，非任务删除；邮件任务只领附件不删邮件），未读 0；资源溢出邮件无附件"
+      },
+      "one_click_scope": {
+        "source": "领取奖励.json#邮件_一键领取 / #邮件_领循环 / #邮件_阶段",
+        "recognition": "OCR expected [一键领取]，roi [200,590,220,80]，max_hit=2 防灰按钮死循环",
+        "scope": "全邮箱：代码为「识别即点 → 领循环 → 按钮消失即结束」，无翻页节点、无单页假设",
+        "equivalence": "与逐封领取判据等价（待领取计数归 0 / 按钮变灰 / 获得物品弹窗）；优先一键，逐封仅兜底",
+        "not_clicked": "本批未实点，仅代码结论"
+      }
+    },
+    "battlepass": {
+      "name": "勘探指南（通行证）",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "勘探指南"
+        ],
+        "roi": [
+          20,
+          20,
+          360,
+          180
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击左侧勘探指南",
+        "action_node": "领奖_进通行证",
+        "expected": [
+          "勘探指南"
+        ],
+        "roi": [
+          0,
+          80,
+          160,
+          80
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 领取奖励实跑（通行证三页无奖励）",
+      "source": "界面导航.json#导航识别_勘探指南；领取奖励.json#领奖_进通行证"
+    },
+    "bp_daily": {
+      "name": "勘探任务-每日",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "每日任务"
+        ],
+        "roi": [
+          250,
+          60,
+          780,
+          180
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "battlepass",
+        "action": "点任务",
+        "action_node": "通行证_点任务",
+        "expected": [
+          "任务"
+        ],
+        "roi": [
+          950,
+          280,
+          120,
+          60
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 领取奖励实跑",
+      "source": "界面导航.json#导航识别_勘探任务每日；领取奖励.json#通行证_每日阶段"
+    },
+    "bp_weekly": {
+      "name": "勘探任务-每周",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "每周任务"
+        ],
+        "roi": [
+          250,
+          60,
+          780,
+          180
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "bp_daily",
+        "action": "点每周任务",
+        "action_node": "通行证_切每周",
+        "expected": [
+          "每周任务"
+        ],
+        "roi": [
+          100,
+          200,
+          260,
+          80
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 领取奖励实跑",
+      "source": "领取奖励.json#通行证_切每周"
+    },
+    "bp_current": {
+      "name": "勘探任务-本期",
+      "group": "任务/邮件",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "本期任务"
+        ],
+        "roi": [
+          250,
+          60,
+          780,
+          180
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "bp_weekly",
+        "action": "点本期任务",
+        "action_node": "通行证_切本期",
+        "expected": [
+          "本期任务"
+        ],
+        "roi": [
+          100,
+          290,
+          260,
+          90
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 领取奖励实跑",
+      "source": "领取奖励.json#通行证_切本期"
+    },
+    "friend_profile": {
+      "name": "个人配置-好友页",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "我的好友",
+          "屏蔽名单",
+          "好友上限"
+        ],
+        "roi": [
+          110,
+          640,
+          1060,
+          55
+        ],
+        "measured": {
+          "我的好友": 0.993,
+          "屏蔽名单": 0.996,
+          "好友上限": 0.986
+        },
+        "note": "页内无标题；底部四页签为稳定锚点"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→个人配置面板；再点面板外空白→主界面（面板 BACK 无效）"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板内点「好友」",
+        "action_node": null,
+        "expected": [
+          "好友"
+        ],
+        "roi": [
+          820,
+          250,
+          440,
+          320
+        ],
+        "click": [
+          886,
+          372
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:22 实机；四页签 OCR 0.986~0.996；点击行名无资料页，行「…」开 删除/屏蔽 菜单",
+      "source": "通用.json#好友 + 实机"
+    },
+    "friend_search": {
+      "name": "好友搜索/添加页",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "请在此处输入用户编号",
+          "编号"
+        ],
+        "roi": [
+          560,
+          100,
+          400,
+          60
+        ],
+        "measured": {
+          "请在此处输入用户编号": 0.998,
+          "编号": 1.0
+        }
+      },
+      "return": {
+        "method": "tab_back",
+        "note": "点底部「我的好友」切回；页内无独立标题"
+      },
+      "entry": {
+        "from": "friend_profile",
+        "action": "点底部「搜索」页签",
+        "action_node": null,
+        "expected": [
+          "搜索"
+        ],
+        "roi": [
+          320,
+          645,
+          110,
+          50
+        ],
+        "click": [
+          359,
+          672
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:23 实机；搜索框文案 0.998；未加任何好友",
+      "source": "界面导航.json#导航识别_好友搜索 + 实机"
+    },
+    "friend_blacklist": {
+      "name": "好友列表（拉黑用）",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "全部解除",
+          "解除"
+        ],
+        "roi": [
+          1050,
+          35,
+          200,
+          60
+        ],
+        "measured": {
+          "全部解除": 0.999
+        }
+      },
+      "return": {
+        "method": "tab_back",
+        "note": "点底部「我的好友」切回"
+      },
+      "entry": {
+        "from": "friend_profile",
+        "action": "点底部「屏蔽名单」页签",
+        "action_node": null,
+        "expected": [
+          "屏蔽名单"
+        ],
+        "roi": [
+          670,
+          645,
+          120,
+          50
+        ],
+        "click": [
+          733,
+          672
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:23 实机；全部解除 0.999；未点解除/全部解除",
+      "source": "界面导航.json#导航识别_好友列表 + 实机"
+    },
+    "shop_home": {
+      "name": "补给站（商店首页）",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "补给站"
+        ],
+        "roi": [
+          934,
+          582,
+          176,
+          127
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击底部补给站",
+        "action_node": "补给站_进入",
+        "expected": [
+          "补给站"
+        ],
+        "roi": [
+          1008,
+          593,
+          111,
+          118
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 每日免费礼包实跑（补给站命中 0.999）；异星/限时入口同页",
+      "source": "每日免费礼包.json#补给站_进入；异星灰域购买.json#异星灰域_进补给站"
+    },
+    "gift_all": {
+      "name": "补给站-全部礼包页",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "全部礼包"
+        ],
+        "roi": [
+          180,
+          40,
+          420,
+          180
+        ],
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点击礼包分类",
+        "action_node": "礼包_每日免费",
+        "expected": [
+          "礼包"
+        ],
+        "roi": [
+          20,
+          325,
+          203,
+          81
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-01 免费礼包实跑（已领取态，10 节点）",
+      "source": "日免费礼包.json#礼包_每日免费、#礼包_已领取；界面导航.json#导航识别_补给站全部礼包"
+    },
+    "gift_featured": {
+      "name": "补给站-精选礼包页",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "精选礼包",
+          "中级调频礼包"
+        ],
+        "roi": [
+          470,
+          105,
+          300,
+          40
+        ],
+        "measured": {
+          "精选礼包": 0.999
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "或切回「全部礼包」页签"
+      },
+      "entry": {
+        "from": "gift_all",
+        "action": "点「精选礼包」子页签",
+        "action_node": null,
+        "expected": [
+          "精选礼包"
+        ],
+        "roi": [
+          490,
+          110,
+          120,
+          40
+        ],
+        "click": [
+          548,
+          130
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:27 实机；精选礼包 0.997/0.999；礼包子页签共 5 个；未购买",
+      "source": "界面导航.json#导航识别_精选礼包 + 实机"
+    },
+    "trade_hub": {
+      "name": "万物贸易所（左侧分类栏）",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "罕见星尘区",
+          "传说星尘区",
+          "拓展研发所",
+          "自选星尘区",
+          "异星灰域"
+        ],
+        "roi": [
+          280,
+          85,
+          940,
+          35
+        ],
+        "measured": {
+          "罕见星尘区": 0.996,
+          "传说星尘区": 0.994,
+          "拓展研发所": 0.999,
+          "自选星尘区": 0.995,
+          "异星灰域": 0.998
+        },
+        "note": "顶部页签需横滑，共 8 个：罕见星尘区 → 传说星辰区 → 拓展研发所 → 自选星尘区 → 异星灰域 → 粲晶贸易区 → 装饰贸易区 → 微晶贸易区。首屏可见后 5 个（自选/异星/粲晶/装饰/微晶，x≈352/552/750/948/1146，y=105）；右滑一屏露出前 5 个（罕见/传说/拓展/自选/异星，x≈346/546/744/943/1143，y=105）。可复用动作：swipe 400 105→1100 105（600ms）只滚页签条不切页 + clicktext。末三个＝粲晶/装饰/微晶（用户决定不动，不采集货架）；家具商店＝原宿舍商店，不做"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "补给站页 BACK→主界面（实测）；贸易所页沿用"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点左侧「万物贸易所」",
+        "action_node": "异星灰域_点万物贸易所",
+        "expected": [
+          "万物贸易所"
+        ],
+        "roi": [
+          80,
+          640,
+          140,
+          60
+        ],
+        "click": [
+          140,
+          674
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:28 实机；顶部 5 个页签 0.986~1.000；未购买",
+      "source": "异星灰域购买.json#异星灰域_点万物贸易所 + 实机"
+    },
+    "trade_alien": {
+      "name": "万物贸易所-异星灰域",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "异星灰域",
+          "传说星尘券",
+          "赤狼星源"
+        ],
+        "roi": [
+          280,
+          85,
+          940,
+          220
+        ],
+        "measured": {
+          "异星灰域": 0.998
+        }
+      },
+      "return": {
+        "method": "tab_back"
+      },
+      "entry": {
+        "from": "trade_hub",
+        "action": "点顶部「异星灰域」",
+        "action_node": null,
+        "expected": [
+          "异星灰域"
+        ],
+        "roi": [
+          1080,
+          85,
+          120,
+          35
+        ],
+        "click": [
+          1143,
+          105
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:29 / 19:12 实机；刷新 3天07:47:25；货币=异星灰域代币（深色六边形图标，余额 2003）；货架 2 屏；含 1 件已售罄；未购买",
+      "source": "界面导航.json#导航识别_异星灰域 + 实机"
+    },
+    "trade_stardust": {
+      "name": "万物贸易所-罕见星尘区",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "罕见星尘区",
+          "构建蓝图"
+        ],
+        "roi": [
+          280,
+          85,
+          940,
+          220
+        ],
+        "measured": {
+          "罕见星尘区": 0.996
+        }
+      },
+      "return": {
+        "method": "tab_back",
+        "note": "切其他页签，或 BACK 回补给站/主界面"
+      },
+      "entry": {
+        "from": "trade_hub",
+        "action": "点顶部「罕见星尘区」（默认页）",
+        "action_node": null,
+        "expected": [
+          "罕见星尘区"
+        ],
+        "roi": [
+          280,
+          85,
+          140,
+          35
+        ],
+        "click": [
+          347,
+          105
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:29 / 19:10 实机；页签 0.996；货币=碎片（黄色碎片图标，余额 3960）；刷新 25天07:49:10；货架 2 屏共 20 件（5 列×2 行/屏，右侧 ⟩ 需横滑）；未购买",
+      "source": "界面导航.json#导航识别_罕见星尘区 + 实机"
+    },
+    "trade_limited": {
+      "name": "万物贸易所-限时贸易所",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "限时贸易所",
+          "荧晶精华瓶"
+        ],
+        "roi": [
+          300,
+          85,
+          900,
+          220
+        ],
+        "measured": {
+          "限时贸易所": 0.998
+        }
+      },
+      "return": {
+        "method": "tab_back"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点左侧「限时贸易所」",
+        "action_node": null,
+        "expected": [
+          "限时贸易所"
+        ],
+        "roi": [
+          80,
+          570,
+          120,
+          55
+        ],
+        "click": [
+          141,
+          596
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:29 / 19:14 实机；页内标题 0.998；货币=金币（余额 1312178）；刷新 10:45:43；货架 10 件全部剩余 1；未购买。与 agent/limited_trade.py 的 coin_ok 对应：已覆盖余额闸/两页扫描/售罄跳过，未覆盖付费货币闸与 purchase_whitelist 三级白名单",
+      "source": "界面导航.json#导航识别_限时贸易所 + 实机"
+    },
+    "mirror_shop": {
+      "name": "镜像竞技-商店兑换",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "演习"
+        ],
+        "roi": [
+          70,
+          110,
+          160,
+          55
+        ]
+      },
+      "return": {
+        "method": "back",
+        "note": "左上 < (68,38) → 镜像竞技对手页；BACK 亦可"
+      },
+      "entry": {
+        "from": "arena_opponent",
+        "action": "点左下「商店兑换」",
+        "action_node": null,
+        "expected": [
+          "商店兑换"
+        ],
+        "roi": [
+          200,
+          625,
+          140,
+          55
+        ],
+        "click": [
+          267,
+          655
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 19:17 实机；货币=演习积分（蓝白六边形图标，余额 3752）；刷新 3天07:42:43；12 件货架（6 列×2 行）；未购买",
+      "source": "第七批只读盘点（导航图.md §16.5）"
+    },
+    "gladiator_shop": {
+      "name": "角斗场-商店兑换",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "角斗兑换"
+        ],
+        "roi": [
+          70,
+          110,
+          160,
+          55
+        ]
+      },
+      "return": {
+        "method": "back",
+        "note": "左上 < → 角斗场主页"
+      },
+      "entry": {
+        "from": "gladiator_entry",
+        "action": "点右上「商店兑换」",
+        "action_node": null,
+        "expected": [
+          "商店兑换"
+        ],
+        "roi": [
+          1040,
+          25,
+          110,
+          50
+        ],
+        "click": [
+          1099,
+          49
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 19:20 实机；货币=角斗积分（粉色五角星嵌五边形图标，余额 6480）；无刷新倒计时（赛季制）；10 件货架；未点「使用微晶入场」、未购买",
+      "source": "第七批只读盘点（导航图.md §16.6）"
+    },
+    "buy_modal": {
+      "name": "商品购买弹窗",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "每日免费礼包",
+          "售价",
+          "购买"
+        ],
+        "roi": [
+          300,
+          100,
+          700,
+          480
+        ],
+        "measured": {
+          "每日免费礼包": 0.99,
+          "售价": 0.99,
+          "购买": 0.99
+        },
+        "note": "2026-11-05 15:58 从补给站礼包卡 (439,386) 打开；本帧为「每日免费礼包」，售价显示「免费」"
+      },
+      "return": {
+        "method": "tap_close",
+        "note": "右上 X (1026,145) 关闭（实测关闭后回上一页）；「购买」按钮 (880,536) 未点"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点击礼包卡",
+        "click": [
+          439,
+          386
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:58 实机；弹窗内未发现「不再弹出」勾选项（购买按钮左侧的 √ 是货币图标）",
+      "source": "界面导航.json#导航识别_商品购买弹窗"
+    },
+    "obtain_modal": {
+      "name": "获得物品弹窗",
+      "group": "通用",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "获得物品",
+          "合成成功"
+        ],
+        "roi": [
+          447,
+          117,
+          405,
+          117
+        ]
+      },
+      "return": {
+        "method": "fixed",
+        "note": "点击弹窗关闭（获得物品按钮）"
+      },
+      "entry": {
+        "from": "any",
+        "action": "领奖/合成后自动出现",
+        "action_node": "子任务_获得物品"
+      },
+      "evidence": "A",
+      "evidence_note": "多任务实跑（领奖、基建合成、战斗结算）",
+      "source": "通用.json#子任务_获得物品"
+    },
+    "team_edit": {
+      "name": "编队编辑页",
+      "group": "编队",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "编队预设",
+          "清空队伍",
+          "上阵：5/5"
+        ],
+        "roi": [
+          20,
+          80,
+          400,
+          560
+        ],
+        "measured": {
+          "编队预设": 0.996,
+          "清空队伍": 0.992,
+          "上阵：5/5": 0.992,
+          "第1战队": 0.984
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→主界面（实测）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击底部「编队」",
+        "action_node": null,
+        "expected": [
+          "编队"
+        ],
+        "roi": [
+          760,
+          650,
+          80,
+          50
+        ],
+        "click": [
+          801,
+          678
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:42 实机；页内无标题，用 上阵/编队预设 判；未改队伍",
+      "source": "界面导航.json#导航识别_编队编辑 + 实机"
+    },
+    "team_list": {
+      "name": "编队队伍列表",
+      "group": "编队",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "第2战队",
+          "第3战队"
+        ],
+        "roi": [
+          790,
+          50,
+          420,
+          610
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "team_edit",
+        "action": "点队伍列表",
+        "action_node": "主线刷取_打开队伍列表",
+        "expected": [
+          "队伍"
+        ],
+        "roi": [
+          180,
+          150,
+          300,
+          40
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "主线刷取实机（队伍 1-4 选择）",
+      "source": "界面导航.json#导航识别_编队队伍列表；主线刷取.json#主线刷取_打开队伍列表"
+    },
+    "team_member_select": {
+      "name": "编队-队员选择页",
+      "group": "编队",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "确认"
+        ],
+        "roi": [
+          930,
+          570,
+          300,
+          120
+        ],
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "team_edit",
+        "action": "点空位",
+        "action_node": null
+      },
+      "evidence": "B",
+      "evidence_note": "2026-11-08 15:00 复测（上阵 5/5）：点空格无效（第 6 格为灰锁格、无加号）；点右侧名单直接进「角色详情」（无确认键）；点阵位角色弹三图标菜单（人形/放大镜/卸下X），人形键点了只收起菜单、无跳转；「确认」型队员选择页在满编态仍不可达",
+      "source": "界面导航.json#导航识别_编队队员选择"
+    },
+    "member_list": {
+      "name": "队员列表",
+      "group": "编队",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "编队",
+          "筛选"
+        ],
+        "roi": [
+          900,
+          20,
+          300,
+          700
+        ],
+        "measured": {
+          "编队": 1.0,
+          "筛选": 0.999,
+          "波塞冬": 0.998
+        },
+        "note": "判据取右上「筛选」box=[1114,38,44,22] 与队员名「波塞冬」box=[945,139,60,22]"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "左上「<」(84,46) → 主界面（实测）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "底部「队员」",
+        "click": [
+          888,
+          677
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:08 实机；OCR 编队 1.000 / 筛选 0.999 / 波塞冬 0.998",
+      "source": "界面导航.json#导航识别_队员列表"
+    },
+    "construct": {
+      "name": "构建（抽卡）页",
+      "group": "构建",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "构建10次",
+          "构建信息"
+        ],
+        "roi": [
+          720,
+          500,
+          520,
+          190
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": null,
+      "evidence": "B",
+      "evidence_note": "识别器存在；入口节点缺失，未实跑（禁止在只读阶段抽卡）",
+      "source": "界面导航.json#导航识别_构建"
+    },
+    "arena_mode": {
+      "name": "模拟军演-模式选择页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "镜像竞技",
+          "军演竞技",
+          "角斗场"
+        ],
+        "roi": [
+          380,
+          90,
+          700,
+          440
+        ],
+        "note": "模式选择为横向轮播三卡（军演竞技/镜像竞技/角斗场，卡面英文 GLADIATORIAL ARENA）；横滑 y=430 / y=290 实测均无效；点侧卡 (1000,290) 可把目标卡居中，再点卡面文字 (482,431) 进角斗场"
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "sortie_submenu",
+        "action": "点击模拟军演",
+        "action_node": "导航边_出击到镜像竞技",
+        "expected": [
+          "模拟军演"
+        ],
+        "roi": [
+          200,
+          310,
+          240,
+          110
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-03 竞技场实机验证（镜像竞技分支）",
+      "source": "界面导航.json#导航识别_镜像竞技模式选择/#军演竞技/#角斗场模式选择"
+    },
+    "arena_opponent": {
+      "name": "镜像竞技-对手页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "对手阵容",
+          "刷新对手"
+        ],
+        "roi": [
+          413,
+          73,
+          800,
+          80
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "arena_mode",
+        "action": "点击镜像竞技",
+        "action_node": "导航边_镜像竞技模式到对手页",
+        "expected": [
+          "镜像竞技"
+        ],
+        "roi": [
+          390,
+          300,
+          500,
+          220
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-03 实机（刷新 15/15、战力读取、进攻部署）",
+      "source": "界面导航.json#导航识别_竞技场对手页面；模拟军演.json#ArenaPageTitle"
+    },
+    "arena_confirm": {
+      "name": "镜像竞技-挑战确认页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "TemplateMatch",
+        "template": "challenge_start.png",
+        "roi": null
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "arena_opponent",
+        "action": "点击挑战/进攻部署",
+        "action_node": "竞技场_确认挑战"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-03 实机（确认自动战斗 + 撤退）",
+      "source": "模拟军演.json#ConfirmStart、#竞技场_确认挑战"
+    },
+    "arena_result": {
+      "name": "镜像竞技-结算页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "战斗胜利",
+          "战斗失败",
+          "获得物品"
+        ],
+        "roi": [
+          13,
+          13,
+          400,
+          147
+        ]
+      },
+      "return": {
+        "method": "fixed",
+        "note": "点结算空白/继续回对手页；回主页用首页按钮"
+      },
+      "entry": {
+        "from": "arena_confirm",
+        "action": "自动战斗后等待结算",
+        "action_node": "竞技场_等待结算"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-03 实机；`竞技场_接续确认页返回` 落点仍标 TODO(pipeline) 未验证",
+      "source": "模拟军演.json#ArenaResult、#ArenaDefeat、#ArenaReward"
+    },
+    "gladiator_entry": {
+      "name": "角斗场-测试版主页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "角斗场",
+          "测试版"
+        ],
+        "roi": [
+          33,
+          620,
+          290,
+          80
+        ],
+        "measured": {
+          "角斗场": 0.991,
+          "测试版": 0.991,
+          "自选模式": 0.996,
+          "随机模式": 0.996,
+          "每日免费进场1次，最多储存3次": 0.992,
+          "第12赛季剩余时间": 0.961
+        },
+        "note": "角斗场 [33,631,199,66] / 测试版 [234,630,86,35] / 自选模式 [988,272,162,45] / 随机模式 [988,540,164,43] / 每日免费进场1次，最多储存3次 [425,586,285,22] / 赛季倒计时 [245,667,223,26]；右上「商店兑换」[1053,35,92,28]，余额 6360→6480（战后 +120；图标五角星嵌五边形+加号，未定名）"
+      },
+      "return": {
+        "method": "home_button",
+        "note": "左上「<」(68,38) 实测回模式页；地图内退出见 gladiator_battle.return"
+      },
+      "entry": {
+        "from": "arena_mode",
+        "action": "轮播点侧卡(1000,290)使角斗场卡居中 → 点卡面文字(482,431)",
+        "click": [
+          482,
+          431
+        ],
+        "expected": [
+          "GLADIATORIAL ARENA"
+        ],
+        "roi": [
+          380,
+          90,
+          700,
+          440
+        ],
+        "note": "模式选择为横向轮播三卡；横滑实测无效"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 16:11–16:30 实机；入口两步实测生效；主页 6 条 OCR 判据 0.961–0.996；帧 arena_enter_gladiator_post_161557_23700.png / arena_mode_post_161357_21028.png",
+      "source": "角斗场.json#模拟军演_角斗场_测试版 + 实机探索 2026-11-05",
+      "pipeline_reuse": {
+        "reuse": [
+          "jdc_route_push 的回合配对 + 最小回合递进 + 右滑找下一回合主干",
+          "点卡面后固定「确定」(1058,648)，实测 (1061,646) 一致",
+          "编队入口 target_offset（当前编队 +[156,-23]）当前有效",
+          "战斗胜负 ROI：战斗胜利 [31,38,326,89] / 战斗失败 [406,54,451,116]"
+        ],
+        "change": [
+          "入口：旧 roi [380,90,700,440] 需改成「点侧卡居中 → 点中心卡面」两步",
+          "入场确认：可免费入场次数 ROI [511,425,251,31] → [537,424,209,27]；按钮文案改为 使用体力入场/使用微晶入场",
+          "编队：阵型 ROI [191,169,465,462] → [181,160,482,490]；拖拽起点 → (843,133)；角色列表 [775,88,483,591] 需右移",
+          "看门狗：单场约 20s；60s 超回合阈值不适用，改为「单场≤60s + run 总时长≤20min」双阈值",
+          "撤退链：角斗场无撤退概念；退出只用左上箭头，BACK/弃权实测无效"
+        ]
+      }
+    },
+    "gladiator_confirm": {
+      "name": "角斗场-入场确认弹窗",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "入场确认",
+          "请选择入场方式"
+        ],
+        "roi": [
+          263,
+          172,
+          749,
+          323
+        ],
+        "note": "标题「■入场确认」[270,181,112,24]；「请选择入场方式」[556,236,170,28]；左「使用体力入场」(504,342) 持有×252；右「使用微晶入场」(777,342) 持有×1101；「可免费入场次数：3」[537,424,209,27]"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK 关闭（本批未复测）"
+      },
+      "entry": {
+        "from": "gladiator_entry",
+        "action": "点击随机模式",
+        "action_node": "模拟军演_角斗场_随机模式",
+        "expected": [
+          "随机模式"
+        ],
+        "roi": [
+          960,
+          510,
+          220,
+          110
+        ],
+        "click": [
+          1070,
+          561
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 16:19 实机；只打开弹窗，未点微晶；点体力路径后体力 252/240→253/240（自然恢复，等价无消耗），金币不变；帧 arena_entry_stamina_post_161951_24432.png",
+      "source": "角斗场.json#模拟军演_角斗场_入场确认"
+    },
+    "gladiator_pick": {
+      "name": "角斗场-选角色页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "已选择角色"
+        ],
+        "roi": [
+          0,
+          0,
+          1280,
+          240
+        ],
+        "note": "顶部「已选择角色（0/6）」；三张候选卡各带「确定」(282,534)/(632,534)/(981,534)；每点一次候选刷新；选满 6/6 自动进推关地图"
+      },
+      "return": {
+        "method": "none",
+        "note": "本批未实测返回；选满自动推进"
+      },
+      "entry": {
+        "from": "gladiator_confirm",
+        "action": "点「使用体力入场」",
+        "click": [
+          504,
+          342
+        ],
+        "expected": [
+          "使用体力入场"
+        ],
+        "note": "右侧「使用微晶入场」为付费路径，禁止点"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 16:22 实机；帧 arena_slot1_post_162221_14208.png；选满 6/6 后自动进地图",
+      "source": "实机探索 2026-11-05"
+    },
+    "gladiator_team": {
+      "name": "角斗场-编队页",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "角斗场小队",
+          "此面向敌",
+          "上阵"
+        ],
+        "roi": [
+          181,
+          160,
+          482,
+          490
+        ],
+        "measured": {
+          "角斗场小队": 0.999,
+          "上阵：5/5": 0.999,
+          "此面向敌": 0.999
+        },
+        "note": "3×3 阵型格心 (261,242)(421,242)(581,242)(261,405)(421,405)(581,405)；角色卡列表 x≈785–1270、y≈85–360，拖拽起点 (843,133)；拖 5 名后「上阵：5/5」、战力 52248"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK → 推关页（实测）"
+      },
+      "entry": {
+        "from": "gladiator_battle",
+        "action": "推关页点「当前编队」",
+        "click": [
+          228,
+          609
+        ],
+        "expected": [
+          "当前编队"
+        ],
+        "note": "当前编队 [17,614,112,35] + target_offset [156,-23]"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 16:25 实机；阵型 ROI 与拖拽起点为本批实测，pipeline 旧值偏左偏上",
+      "source": "jdc_build_team.py + 实机探索 2026-11-05"
+    },
+    "gladiator_battle": {
+      "name": "角斗场-推关地图",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "回合"
+        ],
+        "roi": [
+          156,
+          101,
+          1074,
+          443
+        ],
+        "note": "回合N 判据；每回合 3 条路线候选（额外/持续/反击/群体）；点卡面开右侧详情；地图可右滑或「>>」翻页；战斗后下一列解锁；累计获得 0/81 → 3/81"
+      },
+      "return": {
+        "method": "tap_xy",
+        "click": [
+          68,
+          38
+        ],
+        "note": "左上「<」(68,38) → 模式页，无确认；挑战挂起可续（模式页显示「X进行中，当前第1回合」/最高回合：1回合）。弃权 (1119,45) 与 BACK 实测均无效"
+      },
+      "entry": {
+        "from": "gladiator_pick",
+        "action": "选满 6/6 自动进入",
+        "note": "无需点击"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 16:24–16:30 实机 1 场（未连打）；帧 arena_round1_start_post_162457_2760.png 等",
+      "source": "实机探索 2026-11-05"
+    },
+    "gladiator_stage_detail": {
+      "name": "角斗场-关卡详情面板",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "关卡目标",
+          "通关条件",
+          "掉落物品",
+          "敌方信息"
+        ],
+        "roi": [
+          700,
+          90,
+          560,
+          560
+        ],
+        "note": "点地图卡面后右侧展开：反击-第1回合 / 关卡目标 / 通关条件（击败敌方高能单位、我方队员战败退场数量不超过2个、操作数不大于40）/ 掉落物品 / 首次通关 / 敌方信息"
+      },
+      "return": {
+        "method": "same_page",
+        "note": "点其他卡面即切换；收起未实测"
+      },
+      "entry": {
+        "from": "gladiator_battle",
+        "action": "点关卡卡面",
+        "note": "卡面坐标随回合列变化，不写死"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 16:26 实机；帧 arena_card_right_post_161520_24248.png",
+      "source": "实机探索 2026-11-05"
+    },
+    "gladiator_result": {
+      "name": "角斗场-结算/领奖",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "战斗胜利",
+          "战斗失败",
+          "全部领取"
+        ],
+        "roi": [
+          31,
+          38,
+          326,
+          89
+        ]
+      },
+      "return": {
+        "method": "back_key",
+        "note": "按 P-036：白色箭头只当可退态，实际按 BACK；本批未触达"
+      },
+      "entry": {
+        "from": "gladiator_stage_detail",
+        "action": "点「确定」(1061,646) 开战后等待结算",
+        "expected": [
+          "确定"
+        ]
+      },
+      "evidence": "B",
+      "evidence_note": "本批未触达：战斗约 20s 自动回地图，胜利横幅未截到；run 结算「全部领取」页未到，下批续跑",
+      "source": "角斗场.json#战斗胜利、#战斗失败、#全部领取"
+    },
+    "gladiator_reward": {
+      "name": "角斗场-奖励面板",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "一键领取",
+          "自选模式",
+          "随机模式",
+          "赛季任务"
+        ],
+        "roi": [
+          0,
+          60,
+          1280,
+          600
+        ],
+        "note": "无面板标题判据，以左侧三页签 + 右上「一键领取」共同判据；页签 自选模式(94,172) / 随机模式(94,285) / 赛季任务(94,395)，一键领取(1150,100)。页面右上带「！」红点即当前页有可领项"
+      },
+      "return": {
+        "method": "tap_xy",
+        "click": [
+          85,
+          47
+        ],
+        "note": "左上「<」(85,47) 回角斗场模式页，无确认"
+      },
+      "entry": {
+        "from": "gladiator_entry",
+        "action": "点右下「奖励」(1119,671)",
+        "click": [
+          1119,
+          671
+        ],
+        "note": "左侧为「排行」(935,671)"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-07 00:41 实机；帧 arena_reward_20261107/reward_01.png",
+      "source": "实机探索 2026-11-07"
+    },
+    "gladiator_reward_self": {
+      "name": "角斗场-奖励-自选页签",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "参与1次自选模式",
+          "首次通关自选模式第9回合1次"
+        ],
+        "roi": [
+          180,
+          140,
+          1100,
+          430
+        ],
+        "note": "列表首项为「参与1次自选模式」；累计星条目为 6/9/18/27/36/45/54/63/72/81 十档（不是每 3 星一档）"
+      },
+      "return": {
+        "method": "tap_xy",
+        "click": [
+          94,
+          285
+        ],
+        "note": "点其他页签即切换；左上「<」(85,47) 退出面板"
+      },
+      "entry": {
+        "from": "gladiator_reward",
+        "action": "点左侧「自选模式」页签",
+        "click": [
+          94,
+          172
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-07 实机：12 项全达标，一键领取 6800 角斗勋章 + 赛场王者(30天)×1；帧 reward_01.png / self_list_a.png / self_claim_01.png / self_after_02.png",
+      "source": "实机探索 2026-11-07"
+    },
+    "gladiator_reward_random": {
+      "name": "角斗场-奖励-随机页签",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "参与1次随机模式",
+          "随机模式累计获得"
+        ],
+        "roi": [
+          180,
+          140,
+          1100,
+          430
+        ],
+        "note": "13 项：参与 1/3/6/10/15 次、单次 9/18/27 星、累计 20/50/100/200/300 星；本次 5 项达标（参与1次、参与3次、单次9星、单次18星、累计20星）"
+      },
+      "return": {
+        "method": "tap_xy",
+        "click": [
+          94,
+          172
+        ],
+        "note": "点其他页签即切换"
+      },
+      "entry": {
+        "from": "gladiator_reward",
+        "action": "点左侧「随机模式」页签",
+        "click": [
+          94,
+          285
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-07 实机：5 项一键领取 2500 角斗勋章；帧 random_top_01.png / random_bottom_01.png / random_verify_03.png",
+      "source": "实机探索 2026-11-07"
+    },
+    "gladiator_reward_season": {
+      "name": "角斗场-奖励-赛季页签",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "随机模式累计获得500星",
+          "随机模式累计获得600星",
+          "随机模式累计获得800星"
+        ],
+        "roi": [
+          180,
+          140,
+          1100,
+          430
+        ],
+        "note": "仅 3 项，均为随机模式累计星（500/600/800 星）；本次 48/500、48/600、48/800 全部「前往」，无可领。判据与随机页签同款文案，靠页签高亮区分"
+      },
+      "return": {
+        "method": "tap_xy",
+        "click": [
+          94,
+          285
+        ],
+        "note": "点其他页签即切换"
+      },
+      "entry": {
+        "from": "gladiator_reward",
+        "action": "点左侧「赛季任务」页签",
+        "click": [
+          94,
+          395
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-07 实机；帧 season_top_01.png",
+      "source": "实机探索 2026-11-07"
+    },
+    "gladiator_reward_claim_all": {
+      "name": "角斗场-奖励-一键领取",
+      "group": "出击/竞技",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "一键领取"
+        ],
+        "roi": [
+          1075,
+          75,
+          150,
+          50
+        ],
+        "note": "右上按钮；当前页签无可领时变灰。只作用于当前页签，其他页签不受影响"
+      },
+      "return": {
+        "method": "tap_xy",
+        "click": [
+          375,
+          375
+        ],
+        "note": "领取后弹「获得物品」，点面板内空白关闭；误点代币图标会弹「角斗勋章 持有」说明窗，同样点空白关闭。货币只入账一次"
+      },
+      "entry": {
+        "from": "gladiator_reward",
+        "action": "点右上「一键领取」",
+        "click": [
+          1150,
+          100
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-07 实机；随机页 +2500、自选页 +6800 与赛场王者(30天)×1；代币 7200→16500；帧 claim_all_01.png / self_claim_01.png",
+      "source": "实机探索 2026-11-07"
+    },
+    "ms_map": {
+      "name": "主线地图页（虚拟场域）",
+      "group": "主线",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "核心元库",
+          "世界树之巅",
+          "主脉链路",
+          "困难"
+        ],
+        "roi": [
+          600,
+          545,
+          220,
+          70
+        ],
+        "note": "多个备选锚点，命中任一"
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "sortie_submenu",
+        "action": "点击虚拟场域",
+        "action_node": "主线刷取_点击虚拟场域_第一次",
+        "expected": [
+          "虚拟场域",
+          "琥拟场域",
+          "拟场域",
+          "场域"
+        ],
+        "roi": [
+          1060,
+          445,
+          220,
+          90
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-04 主线实机（画布锚定 + 视口 OCR）",
+      "source": "主线刷取.json#主线刷取_主线页已到、#主线刷取_点击虚拟场域_第一次"
+    },
+    "ms_stage": {
+      "name": "主线关卡详情页",
+      "group": "主线",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "开始战斗"
+        ],
+        "roi": [
+          1020,
+          610,
+          250,
+          90
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "ms_map",
+        "action": "点击区域名（0/x 卡片）",
+        "action_node": "主线刷取_区域定位"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-04 主线实机（区域名可点、进页判据全屏 OCR）",
+      "source": "主线刷取.json#主线刷取_关卡详情已到"
+    },
+    "ms_first_clear": {
+      "name": "首通详情页",
+      "group": "主线",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "首次通关"
+        ],
+        "roi": [
+          900,
+          390,
+          200,
+          60
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "ms_stage",
+        "action": "无（详情页内识别）",
+        "action_node": "主线刷取_首通详情已到"
+      },
+      "evidence": "A",
+      "evidence_note": "主线首通实机（首次通关消失核验）",
+      "source": "主线刷取.json#主线刷取_首通详情已到"
+    },
+    "ms_team": {
+      "name": "主线-队伍选择页",
+      "group": "主线",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "现在",
+          "队伍"
+        ],
+        "roi": [
+          180,
+          120,
+          900,
+          480
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "ms_stage",
+        "action": "点击扫荡",
+        "action_node": "主线刷取_点扫荡",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": [
+          840,
+          618,
+          130,
+          55
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "主线实机（队伍 1-4 行 OCR）",
+      "source": "主线刷取.json#主线刷取_队伍页已到、#队伍行1-4"
+    },
+    "combat": {
+      "name": "战斗页（通用）",
+      "group": "战斗",
+      "arrival": {
+        "method": "TemplateMatch",
+        "template": "Combat/Combat_Combating.png",
+        "roi": [
+          1169,
+          27,
+          105,
+          59
+        ]
+      },
+      "return": {
+        "method": "none",
+        "note": "跳过首领演出/自动战斗/二倍速 为全局 JumpBack"
+      },
+      "entry": {
+        "from": "ms_team",
+        "action": "开始战斗",
+        "action_node": "开始战斗"
+      },
+      "evidence": "A",
+      "evidence_note": "多任务实机（主线/周本/竞技场）",
+      "source": "周本.json#活动探索_战斗中1；通用-队伍与扫荡.json"
+    },
+    "ms_result": {
+      "name": "主线/扫荡结算页",
+      "group": "战斗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": [
+          5,
+          2,
+          530,
+          155
+        ],
+        "note": "主线结算页左上角「扫荡」；每日探索结算页另用 扫荡奖励/等级 [210,481,97,82]"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "主线首通只允许 BACK 退出（问题登记纪律）"
+      },
+      "entry": {
+        "from": "combat",
+        "action": "等待结算动画",
+        "action_node": "战斗结束"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-02 每日探索扫荡结算实机；主线结算实机",
+      "source": "每日探索.json#每日探索_扫荡奖励；周本.json#战斗结束"
+    },
+    "daily_categories": {
+      "name": "每日探索分类页",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "资源采集",
+          "芯片嵌合",
+          "跃升行动"
+        ],
+        "roi": [
+          80,
+          60,
+          520,
+          600
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "sortie_submenu",
+        "action": "点击每日探索",
+        "action_node": "导航边_出击到每日探索",
+        "expected": [
+          "每日探索"
+        ],
+        "roi": [
+          820,
+          230,
+          310,
+          230
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-02 每日探索实机（21 节点，71.5s）",
+      "source": "界面导航.json#导航识别_每日探索分类页；每日探索.json#每日探索_入口"
+    },
+    "daily_resource": {
+      "name": "每日探索-资源采集",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "技能磨砺",
+          "星币开采",
+          "技术解析",
+          "荒墟拾遗"
+        ],
+        "roi": [
+          760,
+          50,
+          480,
+          600
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "daily_categories",
+        "action": "点击资源采集",
+        "action_node": "导航边_每日探索到资源采集",
+        "expected": [
+          "资源采集"
+        ],
+        "roi": [
+          130,
+          70,
+          390,
+          230
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-02 实机（技能磨砺命中 0.987）",
+      "source": "界面导航.json#导航识别_资源采集"
+    },
+    "daily_stage": {
+      "name": "资源采集-关卡/层数选择",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "技能磨砺",
+          "星币开采",
+          "技术解析",
+          "荒墟拾遗"
+        ],
+        "roi": [
+          830,
+          127,
+          190,
+          60
+        ],
+        "note": "层数列表 ROI [1147,258,93,365]"
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "daily_resource",
+        "action": "点击具体关卡",
+        "action_node": "每日探索_技能磨砺"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-02 实机（技能磨砺第 4 层、次数弹窗降到 1）",
+      "source": "每日探索.json#每日探索_技能磨砺、#每日探索_层数选择"
+    },
+    "daily_sweep_modal": {
+      "name": "扫荡次数弹窗",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "使用"
+        ],
+        "roi": [
+          702,
+          398,
+          252,
+          100
+        ]
+      },
+      "return": {
+        "method": "fixed",
+        "note": "取消关闭；次数由 Custom state 校准"
+      },
+      "entry": {
+        "from": "daily_stage",
+        "action": "点击扫荡",
+        "action_node": "每日探索_扫荡",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": [
+          835,
+          566,
+          106,
+          105
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-02 实机（默认 15 次，显式降到 1，体力 569→533）",
+      "source": "每日探索.json#每日探索_扫荡、#每日探索_扫荡双倍"
+    },
+    "daily_result": {
+      "name": "每日探索-扫荡结算页",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "扫荡奖励"
+        ],
+        "roi": [
+          569,
+          5,
+          181,
+          66
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "daily_sweep_modal",
+        "action": "点击开始战斗",
+        "action_node": "每日探索_开始战斗",
+        "expected": [
+          "开始战斗"
+        ],
+        "roi": [
+          943,
+          521,
+          159,
+          85
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-02 实机（扫荡成功/阶段04/EXP360 等 OCR）",
+      "source": "每日探索.json#每日探索_扫荡奖励"
+    },
+    "daily_chip_cat": {
+      "name": "每日探索-芯片嵌合",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "鼓军嵌合",
+          "光嵌合",
+          "迅刃嵌合",
+          "矛盾嵌合"
+        ],
+        "roi": [
+          840,
+          130,
+          240,
+          500
+        ],
+        "measured": {
+          "鼓军嵌合": 0.995,
+          "光嵌合": 0.994,
+          "迅刃嵌合": 0.992,
+          "矛盾嵌合": 0.937
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→每日探索分类"
+      },
+      "entry": {
+        "from": "daily_categories",
+        "action": "点卡片「芯片嵌合」",
+        "action_node": "每日探索_芯片嵌合",
+        "expected": [
+          "芯片嵌合"
+        ],
+        "roi": [
+          290,
+          370,
+          140,
+          70
+        ],
+        "click": [
+          362,
+          396
+        ],
+        "measured": 0.998
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:31 实机；5 类嵌合卡；未点任何关卡",
+      "source": "每日探索.json#每日探索_芯片嵌合 + 实机"
+    },
+    "daily_chip_stage": {
+      "name": "芯片嵌合关卡选择",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "固定掉落",
+          "第1层",
+          "第5层"
+        ],
+        "roi": [
+          930,
+          85,
+          260,
+          450
+        ],
+        "measured": {
+          "固定掉落": 0.997,
+          "第1层": 0.993,
+          "第5层": 0.999
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→芯片嵌合分类（实测）"
+      },
+      "entry": {
+        "from": "daily_chip_cat",
+        "action": "点「鼓军嵌合」",
+        "action_node": null,
+        "expected": [
+          "鼓军嵌合"
+        ],
+        "roi": [
+          840,
+          130,
+          220,
+          60
+        ],
+        "click": [
+          907,
+          159
+        ],
+        "measured": 0.995
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:31 实机；判据「1层~5层」成立；未点层数/开始行动",
+      "source": "每日探索.json#芯片嵌合关卡 + 实机"
+    },
+    "daily_ascend_cat": {
+      "name": "每日探索-跃升行动",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "自然跃升",
+          "人造跃升",
+          "生命跃升"
+        ],
+        "roi": [
+          840,
+          130,
+          240,
+          300
+        ],
+        "measured": {
+          "自然跃升": 0.997,
+          "人造跃升": 0.996,
+          "生命跃升": 0.997
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→每日探索分类"
+      },
+      "entry": {
+        "from": "daily_categories",
+        "action": "点卡片「跃升行动」",
+        "action_node": "每日探索_跃升行动",
+        "expected": [
+          "跃升行动"
+        ],
+        "roi": [
+          290,
+          530,
+          140,
+          70
+        ],
+        "click": [
+          361,
+          561
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:33 实机；3 类跃升卡；未点任何关卡",
+      "source": "每日探索.json#跃升行动 + 实机"
+    },
+    "daily_ascend_stage": {
+      "name": "跃升行动关卡选择",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "固定掉落",
+          "第1层",
+          "第2层"
+        ],
+        "roi": [
+          930,
+          85,
+          260,
+          300
+        ],
+        "measured": {
+          "固定掉落": 0.998,
+          "第1层": 0.989,
+          "第2层": 0.997
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→跃升行动分类（实测）"
+      },
+      "entry": {
+        "from": "daily_ascend_cat",
+        "action": "点「自然跃升」",
+        "action_node": null,
+        "expected": [
+          "自然跃升"
+        ],
+        "roi": [
+          840,
+          130,
+          220,
+          60
+        ],
+        "click": [
+          910,
+          159
+        ],
+        "measured": 0.997
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:34 实机；判据「1层/2层」成立；未点层数/开始行动",
+      "source": "每日探索.json#跃升行动关卡 + 实机"
+    },
+    "daily_chip_full": {
+      "name": "芯片仓满弹窗",
+      "group": "每日探索",
+      "arrival": {
+        "method": "Custom",
+        "custom_recognition": "daily_chip_reward_state",
+        "note": "扫荡结算后出现，判定芯片仓上限/清理"
+      },
+      "return": {
+        "method": "fixed",
+        "note": "只允许取消；禁止点确定删除芯片（用户纪律）"
+      },
+      "entry": {
+        "from": "daily_result",
+        "action": "结算后自动出现",
+        "action_node": "每日探索_芯片仓库上限确认"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-04 扫码奖励流程实机；问题登记 P-026 有处理记录",
+      "source": "每日探索.json#每日探索_芯片仓库上限确认、#芯片仓满处理分派"
+    },
+    "weekly_select": {
+      "name": "活动探索选择页",
+      "group": "周本",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "活动探索",
+          "本周报酬微晶"
+        ],
+        "roi": [
+          500,
+          70,
+          400,
+          160
+        ],
+        "measured": {
+          "活动探索": 0.996,
+          "本周报酬微晶": 0.996
+        },
+        "note": "2026-11-05 轮换版：首屏 碎星虚影/深渊禁区/永境战域/迷之金字塔；左滑一屏 拟真演训/历战试炼/末日战线/实战预演"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→出击二级菜单（实测）"
+      },
+      "entry": {
+        "from": "sortie_submenu",
+        "action": "点击「活动探索」",
+        "action_node": "导航边_出击到活动探索",
+        "expected": [
+          "活动探索"
+        ],
+        "roi": [
+          560,
+          120,
+          180,
+          60
+        ],
+        "click": [
+          650,
+          152
+        ],
+        "measured": 0.997
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:36 实机；8 张活动卡；左滑一次后第 2 卡为历战试炼",
+      "source": "界面导航.json#导航识别_活动探索选择页 + 实机"
+    },
+    "weekly_boss": {
+      "name": "周本-BOSS选择页",
+      "group": "周本",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "戈里刻虚影",
+          "尼克罗虚影",
+          "诺斯虚影"
+        ],
+        "roi": [
+          30,
+          170,
+          760,
+          500
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点击碎星虚影",
+        "action_node": "碎星虚影_卡片",
+        "expected": [
+          "碎星虚影",
+          "碎星虛影"
+        ],
+        "roi": [
+          20,
+          443,
+          860,
+          100
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "周本领奖流程实机进入 BOSS 页（2026-11-09 旧节点 活动探索_碎星虚影 已删，改由独立任务 碎星虚影.json 的 碎星虚影_卡片 点同一张卡）",
+      "source": "周本.json#周本_BOSS选择页_已进入、碎星虚影.json#碎星虚影_卡片"
+    },
+    "weekly_stage": {
+      "name": "周本-第五关关卡页",
+      "group": "周本",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "虚影宙斯"
+        ],
+        "roi": [
+          682,
+          456,
+          180,
+          180
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "weekly_boss",
+        "action": "点击戈里刻虚影→第五关",
+        "action_node": "活动探索_戈里刻虚影"
+      },
+      "evidence": "A",
+      "evidence_note": "周本实机（第五关开始战斗/开始行动）",
+      "source": "周本.json#活动探索_第五关"
+    },
+    "weekly_reward": {
+      "name": "周本-奖励领取页",
+      "group": "周本",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "本周报酬微晶",
+          "600/600",
+          "后重置"
+        ],
+        "roi": [
+          40,
+          595,
+          320,
+          95
+        ],
+        "measured": {
+          "本周报酬微晶": 0.916,
+          "600/600": 0.975,
+          "3天11:14:44后重置": 0.937,
+          "戈里刻虚影": 0.981,
+          "诺斯虚影": 0.989,
+          "尼克罗虚影": 0.983
+        },
+        "note": "页底左侧：本周报酬微晶 box=[106,607,75,19]、600/600 box=[104,624,108,32]、倒计时 box=[64,668,148,18]；提示『完成全部任务后可解锁每周报酬快速领取』[901,669,343,19] 0.977",
+        "page_title_weak": false
+      },
+      "return": {
+        "method": "back_button",
+        "note": "左上「<」(85,46) → 活动探索选择页（实测）；BACK 会弹确认退出"
+      },
+      "entry": {
+        "from": "weekly_boss",
+        "action": "点击碎星虚影卡片",
+        "action_node": "碎星虚影_卡片"
+      },
+      "evidence": "A",
+      "evidence_note": "【2026-11-09 已失效】奖励领取页不复存在：点卡片直接弹全屏「获得物品」（见 问题登记 P-079）；旧节点 周本_点击碎星虚影_领奖 已删，改用 碎星虚影.json#碎星虚影_卡片 点同一张卡。下列 arrival/measured 为 2026-11-05 历史帧，仅作对照",
+      "source": "碎星虚影.json#碎星虚影_卡片、碎星虚影_获得物品（旧：周本.json#周本_点击碎星虚影_领奖、#点外边缘）",
+      "reward_state": {
+        "claimed": "600/600（满额）",
+        "unclaimed": "0/600（交接文档口径）",
+        "countdown": "3天11:14:44后重置（本帧）",
+        "note": "2026-11-05 15:45 实测为 600/600，判为本周已领取；按只读纪律未点领取。已领取态另有卡片位移：碎星虚影从最左槽移到第3槽"
+      }
+    },
+    "event_page": {
+      "name": "活动主页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "开始探索",
+          "挑战列表",
+          "奖励内容"
+        ],
+        "roi": [
+          120,
+          250,
+          420,
+          430
+        ]
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击右侧活动图标",
+        "action_node": "活动_点击活动入口_第一次",
+        "template": "StartUp/活动图标.png",
+        "roi": [
+          900,
+          300,
+          380,
+          300
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "活动-夏活小药流程实机；活动主链入口实机",
+      "source": "活动.json#活动_活动页已到；活动任务实现总结.md"
+    },
+    "event_task": {
+      "name": "活动-任务奖励页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "任务奖励"
+        ],
+        "roi": [
+          40,
+          60,
+          320,
+          120
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "event_page",
+        "action": "进入任务奖励",
+        "action_node": "活动_待领取每日票"
+      },
+      "evidence": "A",
+      "evidence_note": "活动实机（每日票领取）",
+      "source": "活动.json#活动_任务奖励页"
+    },
+    "event_exchange": {
+      "name": "活动-兑换站",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "兑换站点"
+        ],
+        "roi": [
+          20,
+          80,
+          300,
+          120
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "event_page",
+        "action": "进入兑换站",
+        "action_node": "活动_待兑换刷关票"
+      },
+      "evidence": "A",
+      "evidence_note": "活动实机（认证权限卡兑换）",
+      "source": "活动.json#活动_兑换站已到"
+    },
+    "event_hard": {
+      "name": "活动-困难模式页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "困难模式"
+        ],
+        "roi": [
+          80,
+          330,
+          180,
+          80
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "event_page",
+        "action": "点击开始探索/困难模式",
+        "action_node": "活动_进入困难关",
+        "expected": [
+          "开始探索"
+        ],
+        "roi": [
+          160,
+          320,
+          240,
+          120
+        ]
+      },
+      "evidence": "B",
+      "evidence_note": "识别器存在；困难关流程未单独实跑",
+      "source": "活动.json#活动_困难关页面已到"
+    },
+    "event_stage": {
+      "name": "活动关卡页（困难/普通）",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "开始战斗"
+        ],
+        "roi": [
+          1057,
+          615,
+          200,
+          89
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "event_hard",
+        "action": "点击关卡",
+        "action_node": "活动_困难第一关定位_右拖第一次"
+      },
+      "evidence": "B",
+      "evidence_note": "战斗/扫荡入口存在；未单独实跑困难关",
+      "source": "活动.json#活动_进入困难关；周本.json#活动探索_开始"
+    },
+    "event_summer": {
+      "name": "夏日活动页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "夏日"
+        ],
+        "roi": null,
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "event_page",
+        "action": "点击夏日活动入口",
+        "action_node": "夏活_入口",
+        "expected": [
+          "夏日"
+        ],
+        "roi": null
+      },
+      "evidence": "B",
+      "evidence_note": "关卡/扫荡已实机（小药流程）；入口 OCR 夏日 无 ROI，页标题弱",
+      "source": "活动-夏活.json#夏活_入口、#夏活_首页标识"
+    },
+    "event_echo": {
+      "name": "浪潮回响活动页",
+      "group": "活动",
+      "arrival": {
+        "method": "TemplateMatch",
+        "template": [
+          "浪潮回响.png"
+        ],
+        "roi": null,
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "unknown"
+      },
+      "entry": null,
+      "evidence": "C",
+      "evidence_note": "2026-11-05 判据不成立：活动已轮换为「养成计划」；活动探索首屏 4 卡 + 左滑一屏 4 卡均无「浪潮回响」；模板 浪潮回响.png 实测 0.25，入口不存在（非识别阈值问题）",
+      "source": "旧 pipeline 录制 | 本轮实机确认已下线"
+    },
+    "trial_list": {
+      "name": "历战试炼-关卡列表页",
+      "group": "历战试炼",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "列表视图",
+          "奇美拉",
+          "尤弥尔",
+          "瑞尔"
+        ],
+        "roi": [
+          280,
+          80,
+          900,
+          540
+        ],
+        "measured": {
+          "列表视图": 0.998
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→特遣挑战页（实测）"
+      },
+      "entry": {
+        "from": "trial_mission",
+        "action": "点「特遣挑战」",
+        "action_node": null,
+        "expected": [
+          "特遣挑战"
+        ],
+        "roi": [
+          380,
+          380,
+          260,
+          110
+        ],
+        "click": [
+          509,
+          431
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:37 实机；判据由「按钮文字」升级为「列表视图 + BOSS 名」；未点 BOSS",
+      "source": "界面导航.json#导航识别_历战试炼列表 + 实机"
+    },
+    "trial_difficulty": {
+      "name": "历战试炼-难度选择页",
+      "group": "历战试炼",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "难度选择",
+          "推荐战力",
+          "普通"
+        ],
+        "roi": [
+          420,
+          510,
+          620,
+          140
+        ],
+        "measured": {
+          "推荐战力24000": 0.995
+        },
+        "template": {
+          "template": "历战试炼-锁定.png",
+          "roi": [
+            269,
+            588,
+            554,
+            78
+          ],
+          "score": 0.9996,
+          "score_note": "本轮重测 0.9837 / 0.9996（此前离线帧仅 0.5979）"
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→关卡列表页（实测）"
+      },
+      "entry": {
+        "from": "trial_list",
+        "action": "点 BOSS「瑞尔」",
+        "action_node": null,
+        "expected": [
+          "瑞尔"
+        ],
+        "roi": [
+          1030,
+          120,
+          160,
+          80
+        ],
+        "click": [
+          1109,
+          153
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:38 实机；锁定模板在正确 ROI 命中 2 处 0.9837/0.9996；未点开始战斗",
+      "source": "历战试炼.json#历战试炼-难度选择 + 实机"
+    },
+    "trial_result": {
+      "name": "历战试炼-结算/领奖",
+      "group": "历战试炼",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "等级"
+        ],
+        "roi": null,
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "unknown"
+      },
+      "entry": null,
+      "evidence": "C",
+      "evidence_note": "2026-11-05 未实跑：瑞尔详情页仅到难度选择；继续需点「开始战斗」，本轮禁战斗/禁消耗（燃料未动），判据仍未实测；需单独授权",
+      "source": "历战试炼.json#结算 | 本轮未触达"
+    },
+    "altar_cat": {
+      "name": "每日探索-核心开发（下滑后）",
+      "group": "创生微粒",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "核心开发"
+        ],
+        "roi": [
+          250,
+          390,
+          520,
+          260
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "daily_categories",
+        "action": "上滑露出核心开发",
+        "action_node": "创生微粒_每日探索分类页",
+        "expected": [
+          "每日探索"
+        ],
+        "roi": [
+          35,
+          260,
+          260,
+          190
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:03 实机：分类页 swipe (495,240)→(520,160) 后「核心开发」box=[272,559,160,37] 0.998，点 (352,577) 进入核心开发页（实测）",
+      "source": "创生微粒刷取.json#创生微粒_每日探索分类页、#点击核心开发"
+    },
+    "altar_entry": {
+      "name": "超维跃升入口页",
+      "group": "创生微粒",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "超维跃升"
+        ],
+        "roi": [
+          800,
+          90,
+          410,
+          180
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "altar_cat",
+        "action": "点击超维跃升",
+        "action_node": "创生微粒_选择超维跃升"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:05 实机：核心开发页「超维跃升」0.992 box=[853,142,112,34]，点 (909,159) 进超维跃升模块页",
+      "source": "创生微粒刷取.json#创生微粒_选择超维跃升"
+    },
+    "altar_stage": {
+      "name": "超维跃升-关卡 01 页",
+      "group": "创生微粒",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "关卡 01",
+          "推荐战力"
+        ],
+        "roi": [
+          830,
+          70,
+          420,
+          310
+        ]
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "altar_entry",
+        "action": "点击关卡 01",
+        "action_node": "创生微粒_进入超维跃升关卡01",
+        "expected": [
+          "可获得角色超维跃升",
+          "超维跃升"
+        ],
+        "roi": [
+          300,
+          95,
+          500,
+          170
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:05 实机：关卡01页 关卡01 0.975 / 推荐战力38000 0.990 / 关卡目标 0.991 / 通关条件 0.996 / 掉落物品 0.999 / 次数 0.999；扫荡(899,621)与开始战斗(1175,622)均未点",
+      "source": "创生微粒刷取.json#创生微粒_关卡01页面"
+    },
+    "altar_count_modal": {
+      "name": "超维跃升-次数弹窗",
+      "group": "创生微粒",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "无限制次数"
+        ],
+        "roi": [
+          785,
+          475,
+          330,
+          90
+        ]
+      },
+      "return": {
+        "method": "fixed",
+        "note": "取消；次数校准为 3"
+      },
+      "entry": {
+        "from": "altar_stage",
+        "action": "点击扫荡",
+        "action_node": "创生微粒_点击扫荡",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": null
+      },
+      "evidence": "B",
+      "evidence_note": "识别器完整；无实跑记录",
+      "source": "创生微粒刷取.json#创生微粒_次数弹窗接续、#确认次数为3"
+    },
+    "chip_center": {
+      "name": "研发中心（芯片构建/收菜）",
+      "group": "芯片",
+      "arrival": {
+        "method": "ClickTarget",
+        "expected": [
+          "研发中心"
+        ],
+        "roi": null,
+        "note": "「研发中心」是基地页内的点击目标，不是独立页标题；点击后进入建造页（模板 建造按钮）。收菜态另用 TemplateMatch xinpian/收菜按钮.png"
+      },
+      "return": {
+        "method": "home_button"
+      },
+      "entry": {
+        "from": "base_overview",
+        "action": "点击研发中心",
+        "action_node": "芯片构建",
+        "expected": [
+          "研发中心"
+        ],
+        "roi": null
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-04 芯片实机（芯片构建 0.999、进入基建 0.895）",
+      "source": "芯片制造.json#芯片构建、#收菜"
+    },
+    "chip_craft": {
+      "name": "芯片制造页",
+      "group": "芯片",
+      "arrival": {
+        "method": "TemplateMatch",
+        "template": "xinpian/制造预备.png",
+        "roi": null,
+        "page_title_weak": true,
+        "note": "「制造预备」是页内新增按钮；进入建造页的实际点击是 点击建造按钮（模板 template_1789913607081.png）"
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "chip_center",
+        "action": "点击新增",
+        "action_node": "点击新增按钮"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-04 实机（制造预备→筛选→R2→神威→确定→暂无芯片）",
+      "source": "芯片制造.json#点击新增按钮、#筛选"
+    },
+    "chip_select": {
+      "name": "芯片选择弹窗",
+      "group": "芯片",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "筛选"
+        ],
+        "roi": null,
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "fixed",
+        "note": "确定/取消"
+      },
+      "entry": {
+        "from": "chip_craft",
+        "action": "点击筛选并选 R2/神威",
+        "action_node": "筛选"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-04 实机",
+      "source": "芯片制造.json#选择等级（多选项）、#选择芯片（多选项）、#确认芯片"
+    },
+    "chip_modify": {
+      "name": "芯片改造页",
+      "group": "芯片",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "改造"
+        ],
+        "roi": null,
+        "page_title_weak": true
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "chip_select",
+        "action": "选卡后进入改造",
+        "action_node": "点击芯片"
+      },
+      "evidence": "B",
+      "evidence_note": "改造链未实跑（2026-11-04 刻意未启动改造，避免消耗）",
+      "source": "芯片制造.json#改造、#改造_副本1"
+    },
+    "profile_panel": {
+      "name": "个人配置面板（右侧抽屉）",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "设置",
+          "公告",
+          "好友",
+          "宿舍",
+          "战术"
+        ],
+        "roi": [
+          820,
+          250,
+          440,
+          320
+        ],
+        "measured": {
+          "设置": 0.999,
+          "公告": 1.0,
+          "成就": 0.69
+        }
+      },
+      "return": {
+        "method": "tap_outside",
+        "note": "点面板左侧空白(500,400)关闭；BACK 对面板无效（实测页面不消失）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击右上「…」菜单",
+        "action_node": "子任务_进入个人配置",
+        "template": [
+          "StartUp/菜单多.png"
+        ],
+        "roi": [
+          1204,
+          25,
+          35,
+          35
+        ],
+        "measured_template": 0.9456,
+        "click": [
+          1222,
+          44
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:21 实机；菜单模板 0.9456；面板内 设置 0.999 / 公告 1.000；面板同时含 档案/教程/宿舍/战术 入口",
+      "source": "通用.json#子任务_进入个人配置 + 实机"
+    },
+    "friend_requests": {
+      "name": "好友申请页",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "全部拒绝",
+          "同意",
+          "拒绝"
+        ],
+        "roi": [
+          1050,
+          35,
+          200,
+          60
+        ],
+        "measured": {
+          "全部拒绝": 0.996
+        }
+      },
+      "return": {
+        "method": "tab_back",
+        "note": "点底部「我的好友」切回"
+      },
+      "entry": {
+        "from": "friend_profile",
+        "action": "点底部「申请」页签",
+        "action_node": null,
+        "expected": [
+          "申请"
+        ],
+        "roi": [
+          500,
+          645,
+          110,
+          50
+        ],
+        "click": [
+          547,
+          672
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:23 实机；全部拒绝 0.996；未同意/拒绝任何申请",
+      "source": "实机（本轮新发现）"
+    },
+    "friend_action_menu": {
+      "name": "好友行操作菜单（删除/屏蔽）",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "删除",
+          "屏蔽"
+        ],
+        "roi": [
+          960,
+          110,
+          120,
+          110
+        ],
+        "measured": {
+          "删除": 0.955,
+          "屏蔽": 0.854
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK 一次即退回个人配置面板（菜单+好友页一并关闭）"
+      },
+      "entry": {
+        "from": "friend_profile",
+        "action": "点好友行右侧「…」",
+        "action_node": null,
+        "roi": [
+          1140,
+          150,
+          40,
+          45
+        ],
+        "click": [
+          1159,
+          169
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:26 实机；破坏性操作，均未点击",
+      "source": "实机（本轮新发现）"
+    },
+    "char_detail_assist": {
+      "name": "好友助战角色详情页",
+      "group": "好友/订单",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "芯片搭载",
+          "武装技能",
+          "战力"
+        ],
+        "roi": [
+          880,
+          240,
+          340,
+          430
+        ],
+        "measured": {
+          "芯片搭载": 0.998,
+          "武装技能": 0.995,
+          "战力": 0.994,
+          "分享": 1.0
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→好友页（实测）"
+      },
+      "entry": {
+        "from": "friend_profile",
+        "action": "点好友行助战角色头像",
+        "action_node": null,
+        "roi": [
+          850,
+          80,
+          300,
+          110
+        ],
+        "click": [
+          927,
+          135
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:24 实机；未点「芯片搭载」（属芯片改造范畴，保持不动）",
+      "source": "实机（本轮新发现；对应 D 档「角色详情」）"
+    },
+    "shop_recommend": {
+      "name": "补给站-推荐",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "卡蒂雅推荐",
+          "优惠勘探"
+        ],
+        "roi": [
+          80,
+          260,
+          300,
+          400
+        ],
+        "measured": {
+          "卡蒂雅推荐": 0.996
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→主界面（自推荐页实测）"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点左侧「推荐」",
+        "action_node": null,
+        "expected": [
+          "推荐"
+        ],
+        "roi": [
+          70,
+          120,
+          90,
+          40
+        ],
+        "click": [
+          106,
+          136
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:27 实机；补给站左栏 推荐/充值/礼包/时装商店/图册交易所/限时贸易所/万物贸易所",
+      "source": "实机（本轮新发现）"
+    },
+    "shop_recharge": {
+      "name": "补给站-充值",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "双倍",
+          "首充送"
+        ],
+        "roi": [
+          500,
+          110,
+          800,
+          500
+        ],
+        "measured": {
+          "双倍": 0.999,
+          "首充送": 1.0
+        }
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点左侧「充值」",
+        "action_node": null,
+        "expected": [
+          "充值"
+        ],
+        "roi": [
+          70,
+          200,
+          90,
+          40
+        ],
+        "click": [
+          113,
+          214
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:28 实机；未点任何充值/购买项",
+      "source": "实机（本轮新发现）"
+    },
+    "shop_fashion": {
+      "name": "时装商店（落第勇者）",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "落第勇者",
+          "新品",
+          "每周限购"
+        ],
+        "roi": [
+          300,
+          85,
+          400,
+          60
+        ],
+        "measured": {
+          "落第勇者": 0.998
+        }
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点左侧「时装商店」",
+        "action_node": null,
+        "expected": [
+          "时装商店"
+        ],
+        "roi": [
+          80,
+          430,
+          90,
+          40
+        ],
+        "click": [
+          131,
+          443
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:29 实机；页题为当期活动名；未购买",
+      "source": "实机（本轮新发现）"
+    },
+    "shop_atlas": {
+      "name": "图册交易所",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "宿舍故事",
+          "特别招待",
+          "购买"
+        ],
+        "roi": [
+          300,
+          85,
+          450,
+          80
+        ],
+        "measured": {
+          "宿舍故事": 0.999,
+          "特别招待": 0.997
+        }
+      },
+      "return": {
+        "method": "back_button"
+      },
+      "entry": {
+        "from": "shop_home",
+        "action": "点左侧「图册交易所」",
+        "action_node": null,
+        "expected": [
+          "图册交易所"
+        ],
+        "roi": [
+          80,
+          500,
+          90,
+          40
+        ],
+        "click": [
+          141,
+          520
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:29 实机；未点购买",
+      "source": "实机（本轮新发现）"
+    },
+    "trade_legend": {
+      "name": "万物贸易所-传说星尘区",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "传说星尘区",
+          "虫洞传说星尘"
+        ],
+        "roi": [
+          280,
+          85,
+          940,
+          220
+        ],
+        "measured": {
+          "传说星尘区": 0.994
+        }
+      },
+      "return": {
+        "method": "tab_back"
+      },
+      "entry": {
+        "from": "trade_hub",
+        "action": "点顶部「传说星尘区」",
+        "action_node": null,
+        "expected": [
+          "传说星尘区"
+        ],
+        "roi": [
+          460,
+          85,
+          130,
+          35
+        ],
+        "click": [
+          546,
+          105
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:28 实机；未购买",
+      "source": "实机（本轮新发现）"
+    },
+    "trade_rd": {
+      "name": "万物贸易所-拓展研发所",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "拓展研发所",
+          "创生微粒",
+          "中级调频增幅仪"
+        ],
+        "roi": [
+          280,
+          85,
+          940,
+          220
+        ],
+        "measured": {
+          "拓展研发所": 0.999
+        }
+      },
+      "return": {
+        "method": "tab_back"
+      },
+      "entry": {
+        "from": "trade_hub",
+        "action": "点顶部「拓展研发所」",
+        "action_node": null,
+        "expected": [
+          "拓展研发所"
+        ],
+        "roi": [
+          660,
+          85,
+          140,
+          35
+        ],
+        "click": [
+          744,
+          105
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:28 实机；未购买",
+      "source": "实机（本轮新发现）"
+    },
+    "trade_select": {
+      "name": "万物贸易所-自选星尘区",
+      "group": "商店/贸易",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "自选星尘区",
+          "待选择",
+          "初级硅化剂"
+        ],
+        "roi": [
+          280,
+          85,
+          940,
+          220
+        ],
+        "measured": {
+          "自选星尘区": 0.995
+        }
+      },
+      "return": {
+        "method": "tab_back"
+      },
+      "entry": {
+        "from": "trade_hub",
+        "action": "点顶部「自选星尘区」",
+        "action_node": null,
+        "expected": [
+          "自选星尘区"
+        ],
+        "roi": [
+          860,
+          85,
+          130,
+          35
+        ],
+        "click": [
+          944,
+          105
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:29 实机；未点购买/选择",
+      "source": "实机（本轮新发现）"
+    },
+    "trial_mission": {
+      "name": "特遣挑战选择页",
+      "group": "历战试炼",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "特遣挑战"
+        ],
+        "roi": [
+          380,
+          390,
+          260,
+          110
+        ],
+        "measured": {
+          "特遣挑战": 0.919
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→活动探索（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "左滑一屏后点「历战试炼」卡",
+        "action_node": null,
+        "expected": [
+          "历战试炼"
+        ],
+        "roi": [
+          740,
+          450,
+          200,
+          100
+        ],
+        "click": [
+          848,
+          494
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:37 实机；OCR 0.919（金色大字，偏低）",
+      "source": "历战试炼.json#活动探索-首页-出击 + 实机"
+    },
+    "trial_grid": {
+      "name": "历战试炼-列表视图",
+      "group": "历战试炼",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "常规视图",
+          "冰霜禁卫",
+          "索尔达森"
+        ],
+        "roi": [
+          280,
+          80,
+          900,
+          540
+        ],
+        "measured": {
+          "常规视图": 0.999
+        }
+      },
+      "return": {
+        "method": "toggle",
+        "note": "点同位置「列表视图」切回；或 BACK 逐级返回"
+      },
+      "entry": {
+        "from": "trial_list",
+        "action": "点右下「列表视图」",
+        "action_node": null,
+        "expected": [
+          "列表视图"
+        ],
+        "roi": [
+          1050,
+          570,
+          120,
+          50
+        ],
+        "click": [
+          1110,
+          600
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:38 实机；列表含 7 个 BOSS；未点任何 BOSS",
+      "source": "实机（本轮新发现）"
+    },
+    "event_develop": {
+      "name": "活动主页-养成计划",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "养成计划",
+          "拓展养成",
+          "每日签到",
+          "拓展试用"
+        ],
+        "roi": [
+          20,
+          65,
+          900,
+          600
+        ],
+        "measured": {
+          "养成计划": 0.999,
+          "拓展养成": 0.998,
+          "每日签到": 0.994,
+          "拓展试用": 0.997
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→主界面（实测）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点右上「活动」",
+        "action_node": null,
+        "expected": [
+          "活动"
+        ],
+        "roi": [
+          1160,
+          130,
+          80,
+          50
+        ],
+        "click": [
+          1210,
+          157
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:34 实机；当期活动为养成计划（莉普丝），与旧 event_page 判据不同",
+      "source": "实机（本轮新发现，活动轮换版）"
+    },
+    "event_pseudo": {
+      "name": "拟真演训（PSEUDO TRAINING）",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "排行榜",
+          "PSEUDO"
+        ],
+        "roi": [
+          970,
+          230,
+          230,
+          140
+        ],
+        "measured": {
+          "排行榜": 0.998,
+          "PSEUDO": 0.82
+        }
+      },
+      "return": {
+        "method": "back_button",
+        "note": "BACK→活动探索（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "活动探索左滑一屏后点「拟真演训」卡",
+        "action_node": null,
+        "roi": [
+          300,
+          440,
+          180,
+          100
+        ],
+        "click": [
+          479,
+          504
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 12:36 实机；未点开始挑战",
+      "source": "实机（本轮新发现）"
+    },
+    "profile_archive": {
+      "name": "个人档案页（异态专家）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "异态专家",
+          "游戏进度",
+          "徽章展示",
+          "支援助战"
+        ],
+        "roi": [
+          60,
+          140,
+          240,
+          420
+        ],
+        "measured": {
+          "异态专家": 0.939,
+          "游戏进度": 0.998,
+          "徽章展示": 0.986,
+          "支援助战": 0.995
+        },
+        "note": "判定取「游戏进度」box=[68,275,90,24] + 「徽章展示」box=[77,443,96,28]；左上「<」box 附近 (84,46)"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "点左上「<」(84,46) 返回主界面（实测）"
+      },
+      "entry": {
+        "from": "daily_stage",
+        "action": "未确认：在资源采集关卡页点左上「<」后落到本页（入口需复核，疑似该按钮非“返回”）"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 13:07 实机；OCR 异态专家 0.939 / 游戏进度 0.998 / 徽章展示 0.986 / 支援助战 0.995；页面含 游戏进度 7-23 134/134、徽章展示、支援助战",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "feed_gift_modal": {
+      "name": "满馈赠礼（限时礼包促销弹窗）",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "满馈赠礼",
+          "今天不再提示"
+        ],
+        "roi": [
+          150,
+          105,
+          260,
+          50
+        ],
+        "measured": {
+          "满馈赠礼": 0.995,
+          "今天不再提示": 0.996
+        },
+        "note": "弹窗内标题 box=[165,117,91,28]；底部「今天不再提示」box=[1108,632,102,23]"
+      },
+      "return": {
+        "method": "tap_close",
+        "note": "点右上角 X (1210,135) 关闭并回主界面（实测）；「今天不再提示」未点"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点击主界面右侧「满馈赠礼」促销条",
+        "roi": [
+          1150,
+          230,
+          130,
+          50
+        ],
+        "measured": 0.993,
+        "click": [
+          1209,
+          256
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 13:04 实机；入口 0.993、弹窗标题 0.995；X 关闭实测生效",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05",
+      "noagain_checkbox": {
+        "text_box": [
+          1108,
+          632,
+          102,
+          23
+        ],
+        "text_score": 0.997,
+        "checkbox_box": [
+          1070,
+          628,
+          32,
+          32
+        ],
+        "checkbox_center": [
+          1086,
+          644
+        ],
+        "state": "未勾选：浅灰圆角方框、内部空白、无勾号",
+        "result": "2026-11-05 18:28 只读复核：左侧确为独立空白勾选框；未点击、未勾选。公告页（个人配置入口）勾选框 [1059,609,24,25] 的「点了不生效、首点后关页」现象维持既有记录，不改做法",
+        "evidence_frames": [
+          "feed_gift_open_post_182824_3028.png",
+          "crop_feed_checkbox.png"
+        ]
+      }
+    },
+    "exit_confirm_modal": {
+      "name": "确认退出弹窗",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "确认退出？",
+          "取消"
+        ],
+        "roi": [
+          500,
+          270,
+          280,
+          140
+        ],
+        "measured": {
+          "确认退出？": 0.941,
+          "取消": 1.0
+        },
+        "note": "「确认退出？」box=[588,289,94,24]；「取消」box=[532,390,49,30]；在每日探索分类/关卡页按 BACK 触发，不是页面后退"
+      },
+      "return": {
+        "method": "tap_ocr",
+        "note": "点「取消」(556,405) 关闭，停留在原页；切勿点「确定」"
+      },
+      "entry": {
+        "from": "daily_categories",
+        "action": "按 BACK 键"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 13:00/13:10 两次实机复现；取消 1.000 有效",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "warehouse": {
+      "name": "仓库（物品/芯片）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "物品",
+          "芯片",
+          "稀有度",
+          "筛选"
+        ],
+        "roi": [
+          60,
+          20,
+          1200,
+          60
+        ],
+        "measured": {
+          "物品": 1.0,
+          "芯片": 1.0,
+          "稀有度": 0.999,
+          "筛选": 0.999,
+          "普通物品": 0.997
+        },
+        "note": "页签「物品」box=[1009,38,40,24]、「芯片」box=[1167,38,40,24]；右侧分类「普通物品」box=[1120,170,62,20]"
+      },
+      "return": {
+        "method": "back_button",
+        "note": "左上「<」(84,46) → 主界面（实测）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "主界面顶部右侧第三个图标（网格）",
+        "click": [
+          1154,
+          46
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:12 实机；OCR 物品 1.000 / 芯片 1.000 / 稀有度 0.999 / 筛选 0.999 / 普通物品 0.997 / 消耗道具 0.997",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "mail_detail": {
+      "name": "邮件详情（列表右侧分栏）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "核心管理员",
+          "领取"
+        ],
+        "roi": [
+          1080,
+          150,
+          180,
+          420
+        ],
+        "measured": {
+          "核心管理员": 0.997,
+          "领取": 0.996
+        },
+        "note": "选中邮件后右侧显示标题/发件人/日期/正文/「领取」；切换第2封时日期由 2026/11/5 变 2026/11/4"
+      },
+      "return": {
+        "method": "same_page",
+        "note": "无独立返回：点左侧另一封邮件即切换详情；离开用左上「<」(84,46)"
+      },
+      "entry": {
+        "from": "mail",
+        "action": "点选左侧邮件行（含标题区）",
+        "click": [
+          199,
+          264
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:12 实机；OCR 核心管理员 0.997 / 领取 0.996；「领取」为需授权按钮，未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "xingmao_purchase_modal": {
+      "name": "星贸凭证（折扣礼包购买弹窗）",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "星贸凭证",
+          "点击购买"
+        ],
+        "roi": [
+          600,
+          150,
+          300,
+          60
+        ],
+        "measured": {
+          "星贸凭证": 0.997,
+          "点击购买": 0.997
+        },
+        "note": "标题「星贸凭证」box=[583,183,66,24]；按钮「点击购买」box=[794,584,68,22]；含 DISCOUNT PACK/1600%/300桑晶"
+      },
+      "return": {
+        "method": "tap_close",
+        "note": "右上 X (1111,143) 关闭 → 主界面（实测）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "主界面右侧「星贸凭证」促销条",
+        "roi": [
+          1050,
+          140,
+          100,
+          40
+        ],
+        "click": [
+          1103,
+          157
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:07 实机；OCR 星贸凭证 0.997 / 点击购买 0.997；属付费入口，标需授权，未点购买",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05",
+      "needs_authorization": "确认购买会扣真实货币/凭证"
+    },
+    "exit_base_confirm": {
+      "name": "是否退出基地？确认弹窗",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "是否退出基地？",
+          "取消",
+          "确定"
+        ],
+        "roi": [
+          430,
+          290,
+          400,
+          170
+        ],
+        "measured": {
+          "是否退出基地？": 0.991,
+          "取消": 0.998,
+          "确定": 0.999
+        },
+        "note": "「是否退出基地？」box=[568,307,136,26]；「取消」c=(477,449)、「确定」c=(802,448)"
+      },
+      "return": {
+        "method": "tap_ocr",
+        "note": "取消(477,449) 关闭停留；确定(802,448) 回主界面（仅导航，不消耗）"
+      },
+      "entry": {
+        "from": "base_overview",
+        "action": "基地总览左上「<」(84,46)"
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:25 实机；取消/确定均可复现",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "support_helper_modal": {
+      "name": "支援助战-入手顺序选择弹窗",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "入手顺序",
+          "取消"
+        ],
+        "roi": [
+          60,
+          60,
+          1200,
+          640
+        ],
+        "measured": {
+          "入手顺序": 1.0,
+          "取消": 0.998
+        },
+        "note": "标题「入手顺序」c=(725,88)、底部「取消」c=(931,658)；含乌鲁鲁/纯白/奥西里斯等助战队员"
+      },
+      "return": {
+        "method": "tap_ocr",
+        "note": "点「取消」(931,658) 关闭，回到个人档案页（实测）"
+      },
+      "entry": {
+        "from": "profile_archive",
+        "action": "个人档案页右下扳手图标",
+        "click": [
+          1169,
+          569
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:13 实机；OCR 入手顺序 1.000 / 取消 0.998",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "achievement_overview": {
+      "name": "档案/成就收集页（总完成度）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "总完成度",
+          "概况",
+          "成就收集"
+        ],
+        "roi": [
+          0,
+          80,
+          1280,
+          620
+        ],
+        "measured": {
+          "总完成度": 0.998,
+          "416/496": 1.0,
+          "概况": 0.999,
+          "成就收集": 0.999,
+          "完成进度": 0.998,
+          "筛选": 0.998
+        },
+        "note": "判据取「总完成度」box=[581,108,88,28] 与「416/496」box=[1145,111,83,24]；左栏页签 概况/成长/主线/战斗/挑战/经历；点「主线成就」(71,436) 进成就详情网格，详情页左上「<」(85,46) 回概况"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK → 个人配置面板（实测，无确认弹窗）"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板第1行第2个按钮（读作 档案/成就）",
+        "click": [
+          994,
+          275
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:40 实机；OCR 总完成度 0.998 / 416/496 1.000 / 概况 0.999 / 成就收集 0.999；底部「一键领取」(111,688) 属领取，未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "archive_gallery": {
+      "name": "档案/图鉴总览页（敌人/角色/皮肤/故事集）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "角色",
+          "敌人",
+          "皮肤",
+          "故事集"
+        ],
+        "roi": [
+          0,
+          80,
+          1280,
+          600
+        ],
+        "measured": {
+          "角色": 1.0,
+          "敌人": 0.999,
+          "皮肤": 0.999,
+          "故事集": 0.999,
+          "279/279": 0.99,
+          "134/134": 0.919,
+          "628/628": 0.995
+        },
+        "note": "卡片式分栏；左上「<」(85,46)、home(201,46)；敌人 279/279 / 角色 134/134 / 回忆 628/628 为计数判据"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK → 个人配置面板（实测，无确认弹窗）"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板第1行第3个按钮（图鉴/档案）",
+        "click": [
+          1069,
+          278
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:42 实机；OCR 角色 1.000 / 敌人 0.999 / 皮肤 0.999 / 故事集 0.999 / 628/628 0.995；取代原 D 档「图鉴列表」缺失项",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "dormitory": {
+      "name": "宿舍（场景）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "宿舍",
+          "恢复速度",
+          "宿舍列表",
+          "设施列表"
+        ],
+        "roi": [
+          0,
+          0,
+          1280,
+          720
+        ],
+        "measured": {
+          "宿舍": 0.998,
+          "恢复速度191%": 1.0,
+          "宿舍列表": 1.0,
+          "设施列表": 0.999,
+          "42/45": 1.0,
+          "5/5": 0.999,
+          "3828": 0.999
+        },
+        "note": "首次进入有新手引导遮罩（文案：可让队员入驻宿舍…），X(1064,143) 关闭；右栏 好友拜访/赠送/商店/布置/角色 + 宠物；宿舍商店：**不做（用户决定）**（2026-11-05），不接线、不实买，仅其采集数据留作三货币判据；赠送未点"
+      },
+      "return": {
+        "method": "back_key_confirm",
+        "note": "BACK →「提示/是否退出宿舍？」→ 点「确定」(802,448) → 主界面（实测，约 3-5 s 过场）；「取消」(477,449) 留原地"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板第2行第2个按钮「宿舍」",
+        "click": [
+          993,
+          372
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:43 实机；OCR 宿舍 0.998 / 恢复速度191% 1.000 / 宿舍列表 1.000 / 设施列表 0.999",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "tactics": {
+      "name": "战术页",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "战术重置",
+          "经验加成",
+          "伤害增幅"
+        ],
+        "roi": [
+          100,
+          20,
+          1180,
+          680
+        ],
+        "measured": {
+          "战术重置": 0.994,
+          "经验加成1": 0.997,
+          "伤害增幅1": 0.997,
+          "作战整备1": 0.997,
+          "机动战术": 0.998,
+          "星币加成1": 0.996
+        },
+        "note": "判据取右上「战术重置」box=[1090,37,94,27]；点数量 140 在 [981,42,32,20]"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK → 个人配置面板（实测）"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板第2行第3个按钮「战术」",
+        "click": [
+          1100,
+          369
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:48 实机；「战术重置」会重置战术点，属需授权，未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "settings": {
+      "name": "设置页（画面/音频/战斗/其他）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "画面设置",
+          "音频设置",
+          "战斗设置",
+          "用户中心"
+        ],
+        "roi": [
+          0,
+          80,
+          1280,
+          660
+        ],
+        "measured": {
+          "画面设置": 0.993,
+          "音频设置": 0.999,
+          "战斗设置": 0.992,
+          "其他设置": 0.999,
+          "用户中心": 0.999,
+          "3.3.1_13_0_600": 0.964
+        },
+        "note": "四段式：画面设置/音频设置/战斗设置/其他设置；图像质量三档 高(1080,396)/中(757,397)/低(434,397)；底部用户中心(99,669) 与版本号 3.3.1_13_0_600 可作版本判据"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK → 个人配置面板（实测）"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板第2行第4个按钮「设置」",
+        "click": [
+          1206,
+          371
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:47 实机；取代原 D 档「设置/账号页」缺失项；用户中心、补给兑换未进入",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "announce": {
+      "name": "公告页（活动消息/系统公告）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "系统公告",
+          "活动消息",
+          "今天不再提示"
+        ],
+        "roi": [
+          0,
+          40,
+          1280,
+          700
+        ],
+        "measured": {
+          "系统公告": 0.997,
+          "活动消息": 0.998,
+          "公告": 0.93,
+          "今天不再提示": 0.998
+        },
+        "note": "两个页签：活动消息 / 系统公告；正文含「点击跳转」外链按钮（未点）；登录后回主界面会自动以模态弹出（X 1209,92 关闭）"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK → 个人配置面板；面板页左上「·公告」(86,96) 关闭（实测）；模态态点右上 X(1209,92)"
+      },
+      "entry": {
+        "from": "profile_panel",
+        "action": "面板第3行「公告」",
+        "click": [
+          885,
+          458
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 14:48 实机；OCR 系统公告 0.997 / 活动消息 0.998 / 今天不再提示 0.998；另见 14:53 登录自动弹窗帧",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05",
+      "noagain_checkbox": {
+        "checkbox_box": [
+          1059,
+          609,
+          24,
+          25
+        ],
+        "checkbox_center": [
+          1070,
+          621
+        ],
+        "text_box": [
+          1093,
+          616,
+          121,
+          23
+        ],
+        "text_center": [
+          1153,
+          627
+        ],
+        "text_score": 0.998,
+        "result": "2026-11-05 15:57/16:00 共 3 次点击（1069,622 / 1070,620 / 1153,627）：勾选框外观无变化，未见勾选态；其中第一次点击后页面直接关闭并露出补给站，机制待复核",
+        "close": "面板进入的公告页关闭用左上「·公告」(86,96)；登录模态用右上 X(1209,92)"
+      }
+    },
+    "daily_core_dev": {
+      "name": "核心开发页（超维跃升）",
+      "group": "每日探索",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "超维跃升",
+          "核心开发",
+          "可获得角色超维跃升"
+        ],
+        "roi": [
+          240,
+          60,
+          900,
+          480
+        ],
+        "measured": {
+          "超维跃升": 0.992,
+          "可获得角色超维跃升": 0.976,
+          "核心开发": 0.998
+        },
+        "note": "左侧为卡片列（加固/跃升/核心礼盒），右侧为「固定掉落」面板；从分类页需先 swipe (495,240)→(520,160) 再点「核心开发」(352,577)"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "未单独实测（同级页均可用「<」(85,46)）；本批直接前进入关卡页"
+      },
+      "entry": {
+        "from": "daily_categories",
+        "action": "swipe 后点「核心开发」",
+        "click": [
+          352,
+          577
+        ]
+      },
+      "evidence": "B",
+      "evidence_note": "2026-11-05 15:04 实机：判据与入口已实测（超维跃升 0.992 / 可获得角色超维跃升 0.976）；返回路径未单独截帧，故记 B",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "event_pyramid": {
+      "name": "迷之金字塔活动页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "迷之金字塔",
+          "开启中",
+          "奖励预览"
+        ],
+        "roi": [
+          0,
+          60,
+          1280,
+          660
+        ],
+        "measured": {
+          "迷之金字塔": 0.991,
+          "开启中": 1.0,
+          "活动剩余时间": 0.975,
+          "伤害": 0.991,
+          "2330.11万": 0.967,
+          "奖励预览": 0.99,
+          "次数：0/3": 0.993
+        },
+        "note": "右上「迷之金字塔」(1001,98)、左上标题 (105,116)、「开启中」(79,140)；底部伤害档位 10万/30万/50万/100万/300万；「开始战斗」(1154,641) 与「禁区商店」(162,670) 均未点"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(85,46) → 活动探索选择页（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点顶部分活动大卡",
+        "click": [
+          602,
+          221
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:15 实机；OCR 开启中 1.000 / 剩余时间 0.975 / 次数0-3 0.993；开始战斗未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "event_world": {
+      "name": "永境战域活动页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "第27层",
+          "掉落物品",
+          "排行榜"
+        ],
+        "roi": [
+          0,
+          60,
+          1280,
+          660
+        ],
+        "measured": {
+          "第27层": 0.998,
+          "27层": 0.996,
+          "掉落物品": 0.999,
+          "排行榜": 0.997,
+          "模拟": 1.0,
+          "燃料0": 0.997,
+          "队员恢复": 0.993
+        },
+        "note": "左侧楼层列 28/27/26/25；右下「开始战斗」(1165,649) 与「燃料0」同排（燃料不足本就无法开战），未点"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(85,46) → 活动探索选择页（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点卡片「永境战域」（位置随轮播漂移，需 OCR 定位）",
+        "click": [
+          848,
+          494
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:16 实机；OCR 第27层 0.998 / 掉落物品 0.999 / 燃料0 0.997",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "account_modal": {
+      "name": "账号管理弹窗（切换账号/实名/注销）",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "账号管理",
+          "切换账号",
+          "实名信息"
+        ],
+        "roi": [
+          440,
+          170,
+          440,
+          320
+        ],
+        "measured": {
+          "账号管理": 1.0,
+          "切换账号": 1.0,
+          "实名信息": 1.0,
+          "已实名": 0.999,
+          "账号注销": 1.0,
+          "谨慎操作": 0.984
+        },
+        "note": "设置页底部「用户中心」(99,669) 打开；「账号注销」后有「谨慎操作」警示，两键均未点"
+      },
+      "return": {
+        "method": "close_x",
+        "note": "右上 X(891,200) → 设置页（实测）"
+      },
+      "entry": {
+        "from": "settings",
+        "action": "点「用户中心」",
+        "click": [
+          99,
+          669
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:13 实机；OCR 账号管理 1.000 / 切换账号 1.000 / 已实名 0.999；注销未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "redeem_modal": {
+      "name": "兑换中心弹窗（补给兑换）",
+      "group": "通用弹窗",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "兑换中心",
+          "请输入兑换码"
+        ],
+        "roi": [
+          200,
+          120,
+          700,
+          420
+        ],
+        "measured": {
+          "兑换中心": 0.996,
+          "请输入兑换码": 0.989,
+          "补给兑换": 0.997
+        },
+        "note": "设置页「补给兑换」(93,547) 打开；仅输入框，无确认按钮文案可见"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK 一次即关弹窗并回个人配置面板（2026-11-05 19:21 实测；同时回退了设置页）"
+      },
+      "entry": {
+        "from": "settings",
+        "action": "点「补给兑换」",
+        "click": [
+          93,
+          547
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-05 15:13 / 19:21 实机：判据 兑换中心 0.996 / 请输入兑换码 0.989；凭证=兑换码文本，无付费货币入口；BACK 一次即回个人配置面板",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-05"
+    },
+    "stamina_info": {
+      "name": "燃料补给弹窗（体力说明）",
+      "group": "主页",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "燃料补给",
+          "缓慢补给：上限999",
+          "下次补给",
+          "全部补给"
+        ],
+        "roi": [
+          220,
+          140,
+          640,
+          380
+        ],
+        "measured": {
+          "燃料补给": 0.995,
+          "缓慢补给：上限999": 0.999,
+          "248/240": 0.999,
+          "下次补给": 0.994,
+          "全部补给": 0.997,
+          "+120燃料": 0.997,
+          "（每日限购0/6)": 0.893
+        },
+        "note": "主界面顶部体力条 (580,43) 打开；左栏为缓慢补给说明，右栏为购买卡（+120燃料每日限购、货币换燃料、微晶换燃料）——本批一律未点"
+      },
+      "return": {
+        "method": "back_key",
+        "note": "BACK 一次即关弹窗，回主界面，无确认弹窗（2026-11-08 实测）"
+      },
+      "entry": {
+        "from": "home",
+        "action": "点顶部体力条",
+        "click": [
+          580,
+          43
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-08 14:31/14:33/14:36 三次实机：缓慢补给上限 999、248/240、下一跳 18 分钟；248→249 跳点实测；未买体力/未用药",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-08"
+    },
+    "event_xianjie": {
+      "name": "阈限禁区活动页（稽查者-异态体）",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "稽查者-异态体",
+          "活动剩余时间",
+          "反手教学"
+        ],
+        "roi": [
+          0,
+          60,
+          1280,
+          660
+        ],
+        "measured": {
+          "稽查者-异态体": 0.982,
+          "活动剩余时间：0天9时6分": 0.999,
+          "开启中": 1.0,
+          "反手教学": 0.999,
+          "伤害": 0.998,
+          "模拟": 0.999,
+          "禁区商店": 0.993
+        },
+        "note": "标题 (117,116)、顶部大图 (1022,97)；伤害档位 10万/30万/50万/100万/300万；左下「奖励预览」「禁区商店」(162,670)；右下「模拟」次数 3/3 与「开始战斗」，均未点"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(54,37) → 活动探索选择页（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点卡片「阈限禁区」（位置随轮播漂移，需 OCR 定位）",
+        "click": [
+          380,
+          380
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-08 14:53 实机；OCR 稽查者-异态体 0.982 / 活动剩余时间 0.999 / 反手教学 0.999；开始战斗与禁区商店未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-08"
+    },
+    "event_mingshi": {
+      "name": "冥世试炼活动页",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "冥世试炼",
+          "危险等级",
+          "通关条件"
+        ],
+        "roi": [
+          0,
+          60,
+          1280,
+          660
+        ],
+        "measured": {
+          "冥世试炼挑战1": 0.93,
+          "危险等级": 0.997,
+          "通关条件：击败敌方高能单位": 0.996
+        },
+        "note": "左侧难度列 普通/困难/地狱 + CHALLENGE/挑战 页签；右栏「通关阵容」「地形预览」「敌方信息」；左下「任务」(134,609)；右下「开始战斗」(1135,597) 未点"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(54,37) → 活动探索选择页（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点卡片「冥世试炼」（位置随轮播漂移，需 OCR 定位）",
+        "click": [
+          128,
+          375
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-08 14:52 实机；OCR 冥世试炼挑战1 0.930 / 危险等级 0.997 / 通关条件 0.996；开始战斗未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-08"
+    },
+    "event_apocalypse": {
+      "name": "末日战线活动页（暴虐）",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "暴虐",
+          "推荐战力15000",
+          "演算单元"
+        ],
+        "roi": [
+          0,
+          60,
+          1280,
+          660
+        ],
+        "measured": {
+          "暴虐": 0.976,
+          "推荐战力15000": 0.996,
+          "活动倒计时：12天12:4:35": 0.949,
+          "演算单元": 0.999,
+          "扫荡": 0.991,
+          "次数：3/3开始战斗": 0.98
+        },
+        "note": "BOSS 血条 10586252257535/17600000000000；左「任务」；右下「模拟」次数 3/3、「扫荡」(977,601)、「开始战斗」(1136,600)，均未点"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(54,37) → 活动探索选择页（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点卡片「末日战线」（位置随轮播漂移，需 OCR 定位）",
+        "click": [
+          630,
+          395
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-08 14:55 实机；OCR 暴虐 0.976 / 推荐战力15000 0.996 / 演算单元 0.999；扫荡与开始战斗未点",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-08"
+    },
+    "event_drill": {
+      "name": "实战预演活动页（三子模块）",
+      "group": "活动",
+      "arrival": {
+        "method": "OCR",
+        "expected": [
+          "能力测验",
+          "乱序演习",
+          "战力调遣"
+        ],
+        "roi": [
+          380,
+          60,
+          880,
+          600
+        ],
+        "measured": {
+          "能力测验": 0.998,
+          "乱序演习": 0.976,
+          "战力调遣": 0.99
+        },
+        "note": "三张纵向大卡即三个子模块入口，未再下钻（避免进入战斗）；卡面无开始战斗按钮"
+      },
+      "return": {
+        "method": "back_arrow",
+        "note": "左上「<」(54,37) → 活动探索选择页；或「首页」(200,44) 直接回主界面（实测）"
+      },
+      "entry": {
+        "from": "weekly_select",
+        "action": "点卡片「实战预演」（位置随轮播漂移，需 OCR 定位）",
+        "click": [
+          894,
+          395
+        ]
+      },
+      "evidence": "A",
+      "evidence_note": "2026-11-08 14:56 实机；OCR 能力测验 0.998 / 乱序演习 0.976 / 战力调遣 0.990；未下钻子模块",
+      "discovered_by_explore": true,
+      "source": "实机探索 2026-11-08"
+    }
+  },
+  "edges": [
+    {
+      "id": "e_start_neri",
+      "from": "startup_neri",
+      "to": "startup_start",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "开始游戏"
+        ],
+        "roi": [
+          580,
+          462,
+          121,
+          40
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_start_home",
+      "from": "startup_start",
+      "to": "home",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "补给站"
+        ],
+        "roi": [
+          934,
+          582,
+          176,
+          127
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_sortie",
+      "from": "home",
+      "to": "sortie_submenu",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "出击"
+        ],
+        "roi": [
+          1047,
+          533,
+          200,
+          173
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_base",
+      "from": "home",
+      "to": "base_overview",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "基地"
+        ],
+        "roi": [
+          527,
+          600,
+          153,
+          110
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_task",
+      "from": "home",
+      "to": "missions_daily",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "任务"
+        ],
+        "roi": [
+          640,
+          600,
+          120,
+          100
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_mail",
+      "from": "home",
+      "to": "mail",
+      "action": {
+        "method": "TemplateMatch",
+        "template": "Infrastructures/mail.png",
+        "roi": [
+          1025,
+          15,
+          120,
+          50
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_bp",
+      "from": "home",
+      "to": "battlepass",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "勘探指南"
+        ],
+        "roi": [
+          0,
+          80,
+          160,
+          80
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_shop",
+      "from": "home",
+      "to": "shop_home",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "补给站"
+        ],
+        "roi": [
+          1008,
+          593,
+          111,
+          118
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_event",
+      "from": "home",
+      "to": "event_page",
+      "action": {
+        "method": "TemplateMatch",
+        "template": "StartUp/活动图标.png",
+        "roi": [
+          900,
+          300,
+          380,
+          300
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_friend",
+      "from": "home",
+      "to": "friend_profile",
+      "action": {
+        "method": "TemplateMatch",
+        "template": [
+          "StartUp/菜单多.png"
+        ],
+        "roi": [
+          1204,
+          25,
+          35,
+          35
+        ]
+      },
+      "evidence": "C"
+    },
+    {
+      "id": "e_home_team",
+      "from": "home",
+      "to": "team_edit",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "编队"
+        ],
+        "roi": [
+          760,
+          650,
+          80,
+          50
+        ],
+        "click": [
+          801,
+          678
+        ],
+        "measured": 1.0
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_construct",
+      "from": "home",
+      "to": "construct",
+      "action": {
+        "method": "Missing",
+        "note": "主界面「构建」入口按钮无独立识别节点"
+      },
+      "evidence": "C"
+    },
+    {
+      "id": "e_base_staff",
+      "from": "base_overview",
+      "to": "base_staff",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "驻员状况"
+        ],
+        "roi": [
+          54,
+          554,
+          176,
+          89
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_base_order",
+      "from": "base_overview",
+      "to": "order_own",
+      "action": {
+        "method": "TemplateMatch",
+        "template": "Infrastructures/Infr_Deal.png",
+        "roi": [
+          980,
+          225,
+          263,
+          235
+        ]
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_order_friend",
+      "from": "order_own",
+      "to": "order_friend",
+      "action": {
+        "method": "Custom",
+        "custom_recognition": "base_order_state"
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_base_facility",
+      "from": "base_staff",
+      "to": "base_build_detail",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "驻员预设"
+        ],
+        "roi": [
+          900,
+          80,
+          340,
+          580
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_task_tabs_weekly",
+      "from": "missions_daily",
+      "to": "missions_weekly",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "周常"
+        ],
+        "roi": [
+          20,
+          300,
+          160,
+          40
+        ],
+        "click": [
+          63,
+          324
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_task_tabs_main",
+      "from": "missions_daily",
+      "to": "missions_main",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "主线"
+        ],
+        "roi": [
+          20,
+          340,
+          160,
+          40
+        ],
+        "click": [
+          68,
+          362
+        ],
+        "measured": 0.998
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_task_tabs_side",
+      "from": "missions_daily",
+      "to": "missions_side",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "支线"
+        ],
+        "roi": [
+          20,
+          415,
+          160,
+          40
+        ],
+        "click": [
+          65,
+          435
+        ],
+        "measured": 0.999
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_bp_task",
+      "from": "battlepass",
+      "to": "bp_daily",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "任务"
+        ],
+        "roi": [
+          950,
+          280,
+          120,
+          60
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_bp_weekly",
+      "from": "bp_daily",
+      "to": "bp_weekly",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "每周任务"
+        ],
+        "roi": [
+          100,
+          200,
+          260,
+          80
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_bp_current",
+      "from": "bp_weekly",
+      "to": "bp_current",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "本期任务"
+        ],
+        "roi": [
+          100,
+          290,
+          260,
+          90
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_friend_search",
+      "from": "friend_profile",
+      "to": "friend_search",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "搜索"
+        ],
+        "roi": [
+          320,
+          645,
+          110,
+          50
+        ],
+        "click": [
+          359,
+          672
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_friend_blacklist",
+      "from": "friend_profile",
+      "to": "friend_blacklist",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "屏蔽名单"
+        ],
+        "roi": [
+          670,
+          645,
+          120,
+          50
+        ],
+        "click": [
+          733,
+          672
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_gift",
+      "from": "shop_home",
+      "to": "gift_all",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "礼包"
+        ],
+        "roi": [
+          20,
+          325,
+          203,
+          81
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_trade",
+      "from": "shop_home",
+      "to": "trade_hub",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "万物贸易所"
+        ],
+        "roi": [
+          80,
+          640,
+          140,
+          60
+        ],
+        "click": [
+          140,
+          674
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trade_alien",
+      "from": "trade_hub",
+      "to": "trade_alien",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "异星灰域"
+        ],
+        "roi": [
+          1080,
+          85,
+          120,
+          35
+        ],
+        "click": [
+          1143,
+          105
+        ],
+        "measured": 0.998
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trade_limited",
+      "from": "shop_home",
+      "to": "trade_limited",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "限时贸易所"
+        ],
+        "roi": [
+          60,
+          380,
+          150,
+          240
+        ],
+        "click": [
+          141,
+          596
+        ],
+        "measured": 0.998,
+        "note": "左侧栏会随滚动上移，优先 clicktext；本批实测命中 y≈414/596 两个位置"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_arena_mirror_shop",
+      "from": "arena_opponent",
+      "to": "mirror_shop",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "商店兑换"
+        ],
+        "roi": [
+          200,
+          625,
+          140,
+          55
+        ],
+        "click": [
+          267,
+          655
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_shop",
+      "from": "gladiator_entry",
+      "to": "gladiator_shop",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "商店兑换"
+        ],
+        "roi": [
+          1040,
+          25,
+          110,
+          50
+        ],
+        "click": [
+          1099,
+          49
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trade_stardust",
+      "from": "trade_hub",
+      "to": "trade_stardust",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "罕见星尘区"
+        ],
+        "roi": [
+          280,
+          85,
+          140,
+          35
+        ],
+        "click": [
+          347,
+          105
+        ],
+        "measured": 0.996
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_sortie_ms",
+      "from": "sortie_submenu",
+      "to": "ms_map",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "虚拟场域",
+          "琥拟场域",
+          "拟场域",
+          "场域"
+        ],
+        "roi": [
+          1060,
+          445,
+          220,
+          90
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_ms_stage",
+      "from": "ms_map",
+      "to": "ms_stage",
+      "action": {
+        "method": "Custom",
+        "custom_recognition": "mainstory_state",
+        "note": "点区域名 0/x 卡片"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_ms_first",
+      "from": "ms_stage",
+      "to": "ms_first_clear",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "首次通关"
+        ],
+        "roi": [
+          900,
+          390,
+          200,
+          60
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_ms_team",
+      "from": "ms_stage",
+      "to": "ms_team",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": [
+          840,
+          618,
+          130,
+          55
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_ms_combat",
+      "from": "ms_team",
+      "to": "combat",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "开始战斗"
+        ],
+        "roi": [
+          920,
+          525,
+          210,
+          62
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_ms_result",
+      "from": "combat",
+      "to": "ms_result",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": [
+          5,
+          2,
+          530,
+          155
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_sortie_daily",
+      "from": "sortie_submenu",
+      "to": "daily_categories",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "每日探索"
+        ],
+        "roi": [
+          820,
+          230,
+          310,
+          230
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_resource",
+      "from": "daily_categories",
+      "to": "daily_resource",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "资源采集"
+        ],
+        "roi": [
+          130,
+          70,
+          390,
+          230
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_stage",
+      "from": "daily_resource",
+      "to": "daily_stage",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "技能磨砺"
+        ],
+        "roi": [
+          830,
+          127,
+          190,
+          60
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_sweep",
+      "from": "daily_stage",
+      "to": "daily_sweep_modal",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": [
+          835,
+          566,
+          106,
+          105
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_result",
+      "from": "daily_sweep_modal",
+      "to": "daily_result",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "开始战斗"
+        ],
+        "roi": [
+          943,
+          521,
+          159,
+          85
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_chip",
+      "from": "daily_categories",
+      "to": "daily_chip_cat",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "芯片嵌合"
+        ],
+        "roi": [
+          290,
+          370,
+          140,
+          70
+        ],
+        "click": [
+          362,
+          396
+        ],
+        "measured": 0.998
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_chip_stage",
+      "from": "daily_chip_cat",
+      "to": "daily_chip_stage",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "鼓军嵌合"
+        ],
+        "roi": [
+          840,
+          130,
+          220,
+          60
+        ],
+        "click": [
+          907,
+          159
+        ],
+        "measured": 0.995
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_ascend",
+      "from": "daily_categories",
+      "to": "daily_ascend_cat",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "跃升行动"
+        ],
+        "roi": [
+          290,
+          530,
+          140,
+          70
+        ],
+        "click": [
+          361,
+          561
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_ascend_stage",
+      "from": "daily_ascend_cat",
+      "to": "daily_ascend_stage",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "自然跃升"
+        ],
+        "roi": [
+          840,
+          130,
+          220,
+          60
+        ],
+        "click": [
+          910,
+          159
+        ],
+        "measured": 0.997
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_daily_chip_full",
+      "from": "daily_result",
+      "to": "daily_chip_full",
+      "action": {
+        "method": "Custom",
+        "custom_recognition": "daily_chip_reward_state"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_sortie_arena",
+      "from": "sortie_submenu",
+      "to": "arena_mode",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "模拟军演"
+        ],
+        "roi": [
+          200,
+          310,
+          240,
+          110
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_arena_mirror",
+      "from": "arena_mode",
+      "to": "arena_opponent",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "镜像竞技"
+        ],
+        "roi": [
+          390,
+          300,
+          500,
+          220
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_arena_confirm",
+      "from": "arena_opponent",
+      "to": "arena_confirm",
+      "action": {
+        "method": "TemplateMatch",
+        "template": "ArenaChallengeButton.png",
+        "roi": [
+          740,
+          600,
+          200,
+          90
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_arena_result",
+      "from": "arena_confirm",
+      "to": "arena_result",
+      "action": {
+        "method": "Custom",
+        "custom_recognition": "arena_state"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_arena_gladiator",
+      "from": "arena_mode",
+      "to": "gladiator_entry",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "GLADIATORIAL ARENA"
+        ],
+        "roi": [
+          380,
+          90,
+          700,
+          440
+        ],
+        "note": "轮播三卡：先点侧卡 (1000,290) 使角斗场卡居中，再点卡面文字 (482,431)；横滑实测无效"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_confirm",
+      "from": "gladiator_entry",
+      "to": "gladiator_confirm",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "随机模式"
+        ],
+        "roi": [
+          960,
+          510,
+          220,
+          110
+        ],
+        "click": [
+          1070,
+          561
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_pick",
+      "from": "gladiator_confirm",
+      "to": "gladiator_pick",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "使用体力入场"
+        ],
+        "roi": [
+          420,
+          320,
+          180,
+          60
+        ],
+        "click": [
+          504,
+          342
+        ],
+        "note": "「使用微晶入场」(777,342) 为付费路径，禁止点"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_battle",
+      "from": "gladiator_pick",
+      "to": "gladiator_battle",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "已选择角色"
+        ],
+        "note": "选满 6/6 自动进入推关地图，无需额外点击"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_team",
+      "from": "gladiator_battle",
+      "to": "gladiator_team",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "当前编队"
+        ],
+        "click": [
+          228,
+          609
+        ],
+        "note": "推关页左下「当前编队」"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_stage_detail",
+      "from": "gladiator_battle",
+      "to": "gladiator_stage_detail",
+      "action": {
+        "method": "tap_xy",
+        "note": "点关卡卡面，右侧展开详情"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_result",
+      "from": "gladiator_stage_detail",
+      "to": "gladiator_result",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "确定"
+        ],
+        "click": [
+          1061,
+          646
+        ],
+        "note": "点「确定」开战；战斗约 20s 自动回地图"
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_gladiator_reward",
+      "from": "gladiator_entry",
+      "to": "gladiator_reward",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "奖励"
+        ],
+        "roi": [
+          1060,
+          640,
+          120,
+          64
+        ],
+        "click": [
+          1119,
+          671
+        ],
+        "note": "模式页右下角「奖励」；带「！」红点表示有可领项。左侧为「排行」"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_reward_self",
+      "from": "gladiator_reward",
+      "to": "gladiator_reward_self",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          94,
+          172
+        ],
+        "note": "点左侧「自选模式」页签；切换后列表滚到顶部"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_reward_random",
+      "from": "gladiator_reward",
+      "to": "gladiator_reward_random",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          94,
+          285
+        ],
+        "note": "点左侧「随机模式」页签"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_reward_season",
+      "from": "gladiator_reward",
+      "to": "gladiator_reward_season",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          94,
+          395
+        ],
+        "note": "点左侧「赛季任务」页签"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gladiator_reward_claim_all",
+      "from": "gladiator_reward",
+      "to": "gladiator_reward_claim_all",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "一键领取"
+        ],
+        "roi": [
+          1075,
+          75,
+          150,
+          50
+        ],
+        "click": [
+          1150,
+          100
+        ],
+        "note": "只清当前页签；无可领时按钮变灰。领取后已领条目下沉到列表底部，未达标条目顶上来"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_sortie_event",
+      "from": "sortie_submenu",
+      "to": "weekly_select",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "活动探索"
+        ],
+        "roi": [
+          560,
+          120,
+          180,
+          60
+        ],
+        "click": [
+          650,
+          152
+        ],
+        "measured": 0.997
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_weekly_boss",
+      "from": "weekly_select",
+      "to": "weekly_boss",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "碎星虚影",
+          "碎星虛影"
+        ],
+        "roi": [
+          20,
+          443,
+          860,
+          100
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_weekly_stage",
+      "from": "weekly_boss",
+      "to": "weekly_stage",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "戈里刻虚影"
+        ],
+        "roi": [
+          100,
+          333,
+          500,
+          154
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_weekly_reward",
+      "from": "weekly_boss",
+      "to": "weekly_reward",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "碎星虚影",
+          "碎星虛影"
+        ],
+        "roi": [
+          20,
+          445,
+          265,
+          95
+        ]
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_event_task",
+      "from": "event_page",
+      "to": "event_task",
+      "action": {
+        "method": "Custom",
+        "custom_recognition": "activity_state"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_event_exchange",
+      "from": "event_page",
+      "to": "event_exchange",
+      "action": {
+        "method": "Custom",
+        "custom_recognition": "activity_state"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_event_hard",
+      "from": "event_page",
+      "to": "event_hard",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "开始探索"
+        ],
+        "roi": [
+          160,
+          320,
+          240,
+          120
+        ]
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_event_stage",
+      "from": "event_hard",
+      "to": "event_stage",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "开始战斗"
+        ],
+        "roi": [
+          1057,
+          615,
+          200,
+          89
+        ]
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_event_summer",
+      "from": "event_page",
+      "to": "event_summer",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "夏日"
+        ],
+        "roi": null
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_event_echo",
+      "from": "event_page",
+      "to": "event_echo",
+      "action": {
+        "method": "DirectHit",
+        "note": "无判据；进入后靠模板"
+      },
+      "evidence": "C"
+    },
+    {
+      "id": "e_trial",
+      "from": "weekly_select",
+      "to": "trial_list",
+      "action": {
+        "method": "Missing",
+        "note": "历战入口靠活动探索外链，无明确点击节点"
+      },
+      "evidence": "C"
+    },
+    {
+      "id": "e_trial_difficulty",
+      "from": "trial_list",
+      "to": "trial_difficulty",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "瑞尔"
+        ],
+        "roi": [
+          1030,
+          120,
+          160,
+          80
+        ],
+        "click": [
+          1109,
+          153
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trial_result",
+      "from": "trial_difficulty",
+      "to": "trial_result",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "等级"
+        ],
+        "roi": [
+          210,
+          481,
+          97,
+          82
+        ]
+      },
+      "evidence": "C"
+    },
+    {
+      "id": "e_altar_cat",
+      "from": "daily_categories",
+      "to": "altar_cat",
+      "action": {
+        "method": "Swipe",
+        "note": "上滑露出核心开发"
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_altar_entry",
+      "from": "altar_cat",
+      "to": "altar_entry",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "超维跃升"
+        ],
+        "roi": [
+          800,
+          90,
+          410,
+          180
+        ]
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_altar_stage",
+      "from": "altar_entry",
+      "to": "altar_stage",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "可获得角色超维跃升",
+          "超维跃升"
+        ],
+        "roi": [
+          300,
+          95,
+          500,
+          170
+        ]
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_altar_modal",
+      "from": "altar_stage",
+      "to": "altar_count_modal",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "扫荡"
+        ],
+        "roi": null
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_base_chip",
+      "from": "base_overview",
+      "to": "chip_center",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "研发中心"
+        ],
+        "roi": null
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_chip_craft",
+      "from": "chip_center",
+      "to": "chip_craft",
+      "action": {
+        "method": "TemplateMatch",
+        "template": "xinpian/制造预备.png",
+        "roi": null
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_chip_select",
+      "from": "chip_craft",
+      "to": "chip_select",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "筛选"
+        ],
+        "roi": null
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_chip_modify",
+      "from": "chip_select",
+      "to": "chip_modify",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "改造"
+        ],
+        "roi": null
+      },
+      "evidence": "B"
+    },
+    {
+      "id": "e_home_profile_panel",
+      "from": "home",
+      "to": "profile_panel",
+      "action": {
+        "method": "TemplateMatch",
+        "template": "StartUp/菜单多.png",
+        "roi": [
+          1204,
+          25,
+          35,
+          35
+        ],
+        "measured": 0.9456
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_profile_panel_friend_profile",
+      "from": "profile_panel",
+      "to": "friend_profile",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "好友"
+        ],
+        "roi": [
+          820,
+          250,
+          440,
+          320
+        ],
+        "click": [
+          886,
+          372
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_friend_profile_friend_requests",
+      "from": "friend_profile",
+      "to": "friend_requests",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "申请"
+        ],
+        "roi": [
+          500,
+          645,
+          110,
+          50
+        ],
+        "click": [
+          547,
+          672
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_friend_profile_friend_action_menu",
+      "from": "friend_profile",
+      "to": "friend_action_menu",
+      "action": {
+        "method": "Click",
+        "roi": [
+          1140,
+          150,
+          40,
+          45
+        ],
+        "click": [
+          1159,
+          169
+        ],
+        "risk": "destructive-parent"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_friend_profile_char_detail_assist",
+      "from": "friend_profile",
+      "to": "char_detail_assist",
+      "action": {
+        "method": "Click",
+        "roi": [
+          850,
+          80,
+          300,
+          110
+        ],
+        "click": [
+          927,
+          135
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_event_develop",
+      "from": "home",
+      "to": "event_develop",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "活动"
+        ],
+        "roi": [
+          1160,
+          130,
+          80,
+          50
+        ],
+        "click": [
+          1210,
+          157
+        ],
+        "measured": 0.999
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_home_shop_recommend",
+      "from": "shop_home",
+      "to": "shop_recommend",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "推荐"
+        ],
+        "roi": [
+          70,
+          120,
+          90,
+          40
+        ],
+        "click": [
+          106,
+          136
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_home_shop_recharge",
+      "from": "shop_home",
+      "to": "shop_recharge",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "充值"
+        ],
+        "roi": [
+          70,
+          200,
+          90,
+          40
+        ],
+        "click": [
+          113,
+          214
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_home_shop_fashion",
+      "from": "shop_home",
+      "to": "shop_fashion",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "时装商店"
+        ],
+        "roi": [
+          80,
+          430,
+          90,
+          40
+        ],
+        "click": [
+          131,
+          443
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_home_shop_atlas",
+      "from": "shop_home",
+      "to": "shop_atlas",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "图册交易所"
+        ],
+        "roi": [
+          80,
+          500,
+          90,
+          40
+        ],
+        "click": [
+          141,
+          520
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_shop_home_trade_limited",
+      "from": "shop_home",
+      "to": "trade_limited",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "限时贸易所"
+        ],
+        "roi": [
+          80,
+          570,
+          120,
+          55
+        ],
+        "click": [
+          141,
+          596
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_gift_all_gift_featured",
+      "from": "gift_all",
+      "to": "gift_featured",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "精选礼包"
+        ],
+        "roi": [
+          490,
+          110,
+          120,
+          40
+        ],
+        "click": [
+          548,
+          130
+        ],
+        "measured": 0.999
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trade_hub_trade_legend",
+      "from": "trade_hub",
+      "to": "trade_legend",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "传说星尘区"
+        ],
+        "roi": [
+          460,
+          85,
+          130,
+          35
+        ],
+        "click": [
+          546,
+          105
+        ],
+        "measured": 0.994
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trade_hub_trade_rd",
+      "from": "trade_hub",
+      "to": "trade_rd",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "拓展研发所"
+        ],
+        "roi": [
+          660,
+          85,
+          140,
+          35
+        ],
+        "click": [
+          744,
+          105
+        ],
+        "measured": 0.999
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trade_hub_trade_select",
+      "from": "trade_hub",
+      "to": "trade_select",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "自选星尘区"
+        ],
+        "roi": [
+          860,
+          85,
+          130,
+          35
+        ],
+        "click": [
+          944,
+          105
+        ],
+        "measured": 0.995
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_weekly_select_trial_mission",
+      "from": "weekly_select",
+      "to": "trial_mission",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "历战试炼"
+        ],
+        "roi": [
+          740,
+          450,
+          200,
+          100
+        ],
+        "click": [
+          848,
+          494
+        ],
+        "note": "需先左滑一屏"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_weekly_select_event_pseudo",
+      "from": "weekly_select",
+      "to": "event_pseudo",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "拟真演训"
+        ],
+        "roi": [
+          300,
+          440,
+          180,
+          100
+        ],
+        "click": [
+          479,
+          504
+        ],
+        "note": "需先左滑一屏"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trial_mission_trial_list",
+      "from": "trial_mission",
+      "to": "trial_list",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "特遣挑战"
+        ],
+        "roi": [
+          380,
+          380,
+          260,
+          110
+        ],
+        "click": [
+          509,
+          431
+        ],
+        "measured": 0.919
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trial_list_trial_grid",
+      "from": "trial_list",
+      "to": "trial_grid",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "列表视图"
+        ],
+        "roi": [
+          1050,
+          570,
+          120,
+          50
+        ],
+        "click": [
+          1110,
+          600
+        ],
+        "measured": 0.998
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_trial_grid_trial_list",
+      "from": "trial_grid",
+      "to": "trial_list",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "常规视图"
+        ],
+        "roi": [
+          1050,
+          570,
+          120,
+          50
+        ],
+        "click": [
+          1110,
+          600
+        ],
+        "measured": 0.999,
+        "note": "视图切换回网格"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_feed_gift",
+      "from": "home",
+      "to": "feed_gift_modal",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "满馈赠礼"
+        ],
+        "roi": [
+          1150,
+          230,
+          130,
+          50
+        ],
+        "click": [
+          1209,
+          256
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_feed_gift_close",
+      "from": "feed_gift_modal",
+      "to": "home",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1210,
+          135
+        ],
+        "note": "右上 X"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_daily_back_exit_confirm",
+      "from": "daily_categories",
+      "to": "exit_confirm_modal",
+      "action": {
+        "method": "keyevent",
+        "key": "BACK",
+        "expected": [
+          "确认退出？"
+        ],
+        "roi": [
+          500,
+          270,
+          280,
+          140
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_exit_confirm_cancel",
+      "from": "exit_confirm_modal",
+      "to": "daily_categories",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "取消"
+        ],
+        "roi": [
+          500,
+          270,
+          300,
+          160
+        ],
+        "click": [
+          556,
+          405
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_home_member",
+      "from": "home",
+      "to": "member_list",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          888,
+          677
+        ],
+        "expected": [
+          "编队",
+          "筛选"
+        ]
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_home_warehouse",
+      "from": "home",
+      "to": "warehouse",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1154,
+          46
+        ],
+        "expected": [
+          "物品",
+          "芯片"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_mail_detail",
+      "from": "mail",
+      "to": "mail_detail",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          199,
+          264
+        ],
+        "expected": [
+          "核心管理员",
+          "领取"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_home_xingmao",
+      "from": "home",
+      "to": "xingmao_purchase_modal",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1103,
+          157
+        ],
+        "expected": [
+          "星贸凭证",
+          "点击购买"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_xingmao_close",
+      "from": "xingmao_purchase_modal",
+      "to": "home",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1111,
+          143
+        ],
+        "note": "右上 X"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_profile_archive",
+      "from": "home",
+      "to": "profile_archive",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          60,
+          56
+        ],
+        "note": "左上头像"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_archive_helper",
+      "from": "profile_archive",
+      "to": "support_helper_modal",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1169,
+          569
+        ],
+        "expected": [
+          "入手顺序"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_base_exit",
+      "from": "base_overview",
+      "to": "exit_base_confirm",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          84,
+          46
+        ],
+        "expected": [
+          "是否退出基地？"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_exit_base_confirm",
+      "from": "exit_base_confirm",
+      "to": "home",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          802,
+          448
+        ],
+        "note": "确定（仅导航）"
+      },
+      "evidence": "A"
+    },
+    {
+      "id": "e_profile_panel_achievement",
+      "from": "profile_panel",
+      "to": "achievement_overview",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          994,
+          275
+        ],
+        "expected": [
+          "总完成度",
+          "成就收集"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_profile_panel_gallery",
+      "from": "profile_panel",
+      "to": "archive_gallery",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1069,
+          278
+        ],
+        "expected": [
+          "角色",
+          "敌人",
+          "皮肤"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_profile_panel_dorm",
+      "from": "profile_panel",
+      "to": "dormitory",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          993,
+          372
+        ],
+        "expected": [
+          "宿舍列表",
+          "设施列表"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_profile_panel_tactics",
+      "from": "profile_panel",
+      "to": "tactics",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1100,
+          369
+        ],
+        "expected": [
+          "战术重置",
+          "经验加成"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_profile_panel_settings",
+      "from": "profile_panel",
+      "to": "settings",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          1206,
+          371
+        ],
+        "expected": [
+          "画面设置",
+          "用户中心"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_profile_panel_announce",
+      "from": "profile_panel",
+      "to": "announce",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          885,
+          458
+        ],
+        "expected": [
+          "系统公告",
+          "活动消息"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_home_announce_auto",
+      "from": "home",
+      "to": "announce",
+      "action": {
+        "method": "auto_popup",
+        "expected": [
+          "系统公告",
+          "活动消息"
+        ],
+        "note": "登录/回主界面时自动以模态弹出；关闭 X(1209,92)"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_daily_categories_core_dev",
+      "from": "daily_categories",
+      "to": "daily_core_dev",
+      "action": {
+        "method": "swipe_then_tap",
+        "swipe": [
+          [
+            495,
+            240
+          ],
+          [
+            520,
+            160
+          ],
+          650
+        ],
+        "click": [
+          352,
+          577
+        ],
+        "expected": [
+          "核心开发"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_weekly_select_pyramid",
+      "from": "weekly_select",
+      "to": "event_pyramid",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          602,
+          221
+        ],
+        "expected": [
+          "迷之金字塔",
+          "开启中"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_weekly_select_world",
+      "from": "weekly_select",
+      "to": "event_world",
+      "action": {
+        "method": "tap_ocr",
+        "click": [
+          848,
+          494
+        ],
+        "expected": [
+          "永境战域"
+        ],
+        "note": "卡片位置随轮播漂移，须 OCR 定位后点其中心"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_settings_account",
+      "from": "settings",
+      "to": "account_modal",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          99,
+          669
+        ],
+        "expected": [
+          "账号管理",
+          "切换账号"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_settings_redeem",
+      "from": "settings",
+      "to": "redeem_modal",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          93,
+          547
+        ],
+        "expected": [
+          "兑换中心",
+          "请输入兑换码"
+        ]
+      },
+      "evidence": "B",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_home_stamina",
+      "from": "home",
+      "to": "stamina_info",
+      "action": {
+        "method": "tap_xy",
+        "click": [
+          580,
+          43
+        ],
+        "expected": [
+          "燃料补给",
+          "缓慢补给：上限999"
+        ]
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_weekly_xianjie",
+      "from": "weekly_select",
+      "to": "event_xianjie",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "稽查者-异态体"
+        ],
+        "note": "卡片位置随轮播漂移，用「稽查者-异态体」定位"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_weekly_mingshi",
+      "from": "weekly_select",
+      "to": "event_mingshi",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "冥世试炼"
+        ],
+        "note": "卡片位置随轮播漂移，用「冥世试炼」定位"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_weekly_apocalypse",
+      "from": "weekly_select",
+      "to": "event_apocalypse",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "末日战线"
+        ],
+        "note": "卡片位置随轮播漂移，用「末日战线」定位"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    },
+    {
+      "id": "e_weekly_drill",
+      "from": "weekly_select",
+      "to": "event_drill",
+      "action": {
+        "method": "OCR",
+        "expected": [
+          "实战预演"
+        ],
+        "note": "卡片位置随轮播漂移，用「实战预演」定位"
+      },
+      "evidence": "A",
+      "discovered_by_explore": true
+    }
+  ],
+  "missing_pages": [
+    {
+      "name": "构建结果/抽卡历史页",
+      "why": "构建页只有 构建10次/构建信息 识别器，结果页必须「构建」后才产生",
+      "impact": "抽卡类任务无法闭环；需授权（消耗构建券）"
+    },
+    {
+      "name": "好友个人资料页",
+      "why": "好友页可读（我的好友 0.993 / 好友上限34-40 1.000），但单击好友行、头像、名字、「…」、房子图标各 1 次无跳转，长按 900ms 亦无响应（帧 friend_longpress.png）；疑似游戏无独立好友资料页，仅有「…」菜单与房子（拜访）入口",
+      "impact": "好友资料分支不可达；若要下结论需另找入口（如拜访宿舍内）"
+    },
+    {
+      "name": "星贸凭证/新途补给（页签）",
+      "why": "主界面点「星贸凭证」(1103,157) 直接弹付费折扣礼包（DISCOUNT PACK 300 桑晶 + 点击购买），非可读页签",
+      "impact": "礼包分支不可只读；需授权"
+    }
+  ],
+  "device_todo": [
+    {
+      "id": "T3",
+      "page": "邮件详情/分类",
+      "missing": "单封邮件详情、邮件分类页",
+      "method": "邮件页抓帧 + 点首封邮件",
+      "risk": "只读，不领取附件"
+    },
+    {
+      "id": "T5",
+      "page": "订单库 own/friend",
+      "missing": "订单库整链",
+      "method": "基地→交付入口→订单库，只读抓帧",
+      "risk": "只读，不交付"
+    },
+    {
+      "id": "T6",
+      "page": "角斗场全链",
+      "missing": "入场/编队/推关/领奖",
+      "method": "免费次数>0 时免费入场",
+      "risk": "消耗次数/体力，需单独授权"
+    },
+    {
+      "id": "T10",
+      "page": "周本-领奖页",
+      "missing": "未领取态坐标/左拖次数",
+      "method": "周本页抓帧，不领取",
+      "risk": "只读"
+    },
+    {
+      "id": "T11",
+      "page": "芯片改造/收菜",
+      "missing": "改造页实跑",
+      "method": "需授权后启动",
+      "risk": "消耗材料/槽位，需单独授权"
+    },
+    {
+      "id": "N1",
+      "page": "活动 8 卡剩余页",
+      "missing": "碎星虚影/深渊禁区/永境战域/迷之金字塔/末日战线/实战预演/冥世试炼 判据",
+      "method": "活动探索逐卡进入，只读抓帧",
+      "risk": "只读"
+    },
+    {
+      "id": "N2",
+      "page": "个人配置子页",
+      "missing": "档案/教程/宿舍/战术/设置/公告 判据",
+      "method": "菜单多→各按钮，只读抓帧",
+      "risk": "只读"
+    },
+    {
+      "id": "N3",
+      "page": "构建/队员列表",
+      "missing": "页面判据与入口",
+      "method": "主界面底部按钮逐个进入，只读抓帧",
+      "risk": "只读，不抽卡"
+    },
+    {
+      "id": "N4",
+      "page": "浪潮回响",
+      "missing": "入口已不存在",
+      "method": "—",
+      "risk": "活动轮换，已下线；保留旧节点仅作历史"
+    }
+  ],
+  "device_session_2026_11_05": {
+    "date": "2026-11-05",
+    "window": "12:20-12:42 (Asia/Shanghai)",
+    "device": "MuMu 实例 127.0.0.1:16416",
+    "package": "com.megagame.crosscore.bilibili",
+    "frames_dir": "apps/crosscore-auto/sandbox/needframes",
+    "logs_dir": "apps/crosscore-auto/sandbox/logs (nav_probe_20261105_*.log)",
+    "rule": "只读：未开始行动/战斗、未购买/抽卡/领取、未点删除/屏蔽/全部解除/全部拒绝；判据最多试 2 次",
+    "note": "屏幕空闲会自动锁屏，每批操作前需 KEYCODE_WAKEUP + swipe 解锁（P-012）",
+    "extra_sessions": [
+      {
+        "window": "12:57-13:13",
+        "result": "中止：另一条线 MAA 每日探索周期性占用设备（P 级）"
+      },
+      {
+        "window": "14:36-14:55",
+        "result": "只读补证：新增 6 界面（档案·总完成度/图鉴总览/宿舍/战术/设置/公告），6 条入口边 + 1 条自动弹窗边；未消耗资源"
+      },
+      {
+        "window": "15:04-15:17",
+        "result": "只读补证：创生微粒链（核心开发→超维跃升→关卡01）3 节点转 A；订单库（自己/好友同页）2 节点转 A；新增迷之金字塔、永境战域、账号管理弹窗、兑换中心弹窗（+核心开发页共 5 节点）；未点任何消耗按钮"
+      },
+      {
+        "window": "15:45-16:04",
+        "result": "周本已领取态判定（600/600，未点领取）；公告今天不再提示勾选实测无态变化；商品购买弹窗关闭+未见不再弹窗；邮件单封领取 +2000 金币；宿舍商店/角斗场/购买白名单未做"
+      }
+    ]
+  }
+}

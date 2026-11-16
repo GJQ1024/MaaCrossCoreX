@@ -1,0 +1,204 @@
+{
+    "启动_资源前": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "StartUp", "phase": "before" },
+        "next": [
+            "进入首页"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：任务前快照（新 interface entry）。挂点约定见 docs/resource_stats.md「挂接顺序」"
+    },
+    "启动_资源后": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "StartUp", "phase": "after" },
+        "next": [
+            "启动_记忆完成"
+        ],
+        "on_error": [
+            "启动_记忆完成"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：任务后差值。本出口被共享回主界面导航经过（那时无配对 before，动作返回 False 且不写 JSONL）→ on_error 兜底直奔记忆完成，导航流不受影响"
+    },
+    "启动_记忆完成": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_complete",
+        "custom_action_param": { "task": "StartUp", "cooldown_minutes": 0, "daily_limit": 0, "refresh_hour": 5 },
+        "next_doc": "2026-11-02 任务记忆接入：完成记录只挂在已被证明成功的出口——《首页标志1》（OCR 补给站 + 稳帧 + 锚点主界面）之后。2026-11-02 复查：启动语义是「确保在主界面」而非「今天做过一次」，故移除门禁节点（原 30 分钟冷却会在游戏闪退重开时误拦），本节点仅作启动次数统计、永不拦截"
+    },
+    "进入首页": {
+        "timeout": 180000,
+        "next": [
+            "首页标志1",
+            "首页标志2",
+            "[JumpBack]子任务_点击首页按钮",
+            "[JumpBack]子任务_点击返回",
+            "[JumpBack]子任务_获得物品",
+            "[JumpBack]子任务_点击取消",
+            "[JumpBack]子任务_点击确认",
+            "[JumpBack]子任务_点击同意",
+            "[JumpBack]子任务_关闭促销弹窗",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "签到",
+            "开始游戏",
+            "下载资源",
+            "启动_唤醒待机页面",
+            "启动角色界面",
+            "[JumpBack]启动游戏"
+        ],
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "3.3.1 实机验证链路：B服包名 + B服首次启动隐私协议/促销弹窗处理；节点名沿用上游"
+    },
+    "启动游戏": {
+        "action": "StartApp",
+        "package": "com.megagame.crosscore.bilibili",
+        "post_delay": 5000,
+        "max_hit": 5,
+        "next_doc": "2026-11-02 假成功整治：StartApp 无识别恒命中，应用始终起不来时会无限重启循环（进入首页 timeout 在链持续命中时不触发，实机 285s 复现证实）；max_hit=5 封顶，耗尽后扫描无命中 → 进入首页 timeout → 判失败。实机冷启动正常命中 ≤3 次"
+    },
+    "启动角色界面": {
+        "recognition": "TemplateMatch",
+        "template": "StartUp/NERI.png",
+        "roi": [325, 214, 662, 354],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 60000,
+        "max_hit": 40,
+        "next": [
+            "下载资源",
+            "开始游戏",
+            "启动角色界面"
+        ],
+        "next_doc": "2026-11-02 假成功整治：NERi 加载页自转循环必须有界（无界时加载页卡死 = 无限循环永不判失败，实机复现自转 19 次且进入首页 180s 超时不触发）。max_hit=40：实测每轮约 6.7s（稳帧 1s + 2×OCR + 模板），40 轮约 4.5 分钟加载预算；B服冷启动实机需 33 轮，耗尽后判失败"
+    },
+    "下载资源": {
+        "recognition": "OCR",
+        "expected": [
+            "下载"
+        ],
+        "roi": [859, 645, 78, 54],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 60000,
+        "max_hit": 150,
+        "next": [
+            "开始游戏",
+            "下载资源"
+        ],
+        "next_doc": "2026-11-02 假成功整治：下载页等待循环封顶（每轮含稳帧 1s，150 轮约 3-5 分钟下载预算；大版本补丁超此预算会判失败，属已知取舍）"
+    },
+    "启动_唤醒待机页面": {
+        "recognition": "OCR",
+        "expected": [
+            "^[0-2]?\\d\\s*[:：.]\\s*[0-5]\\d"
+        ],
+        "roi": [0, 470, 760, 250],
+        "threshold": 0.2,
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "action": "Click",
+        "post_delay": 1800,
+        "max_hit": 3,
+        "next": [
+            "进入首页"
+        ],
+        "next_doc": "待机页时钟即唤醒入口：OCR 命中时钟后点击识别框中心（时钟是纯显示区，无按钮，属无副作用空白点击；不写绝对 target，遵守 docs/coords.md §4）。此类待机画面是游戏屏保（前台仍是游戏、keyguard=false），不是 Android 系统锁屏，禁止用 KEYCODE_WAKEUP/上滑；Agent 侧统一走 scripts/device_judge.py::tap_neutral() 的固定中性点 (1200,400)，详见 docs/项目规范.md §8.1。2026-11-09 01:41 实机帧：时钟实际在左下 (37,631)-(250,691)，原 ROI [0,80,1280,560] 截不到；且屏保时钟带 A.M 后缀，正则去掉尾部 $ 才能命中。"
+    },
+    "开始游戏": {
+        "recognition": "OCR",
+        "expected": [
+            "开始游戏"
+        ],
+        "roi": [580, 462, 121, 40],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 30000,
+        "action": "Click",
+        "max_hit": 5,
+        "next": [
+            "首页标志1",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "签到",
+            "开始游戏"
+        ],
+        "next_doc": "2026-11-02 假成功整治：开始游戏按钮持续可见但点击不生效时自转无界 → max_hit=5 封顶（实机冷启动正常命中 2 次）"
+    },
+    "签到": {
+        "recognition": "OCR",
+        "expected": [
+            "签到"
+        ],
+        "roi": [1053, 554, 211, 105],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "action": "Click",
+        "max_hit": 3,
+        "next": [
+            "首页标志1",
+            "[JumpBack]子任务_点击首页按钮",
+            "[JumpBack]子任务_点击返回",
+            "[JumpBack]子任务_获得物品",
+            "[JumpBack]子任务_点击取消",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "签到"
+        ],
+        "next_doc": "本周期签到未自然触发过，节点待下次出现时补验。2026-11-02 假成功整治：自转 max_hit=3 封顶"
+    },
+    "首页标志1": {
+        "recognition": "OCR",
+        "expected": [
+            "补给站"
+        ],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "post_delay": 1000,
+        "focus": "已到达主界面，锚点「主界面」已设置",
+        "next": [
+            "启动_资源后"
+        ],
+        "next_doc": "2026-11-02 任务记忆接入：成功唯一出口（假成功整治确定）之后先算资源差值、再写完成记录"
+    },
+    "首页标志2": {
+        "recognition": "TemplateMatch",
+        "template": "StartUp/HomeFlag1.png",
+        "roi": [118, 357, 82, 317],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "target_offset": [461, -165, 0, 0],
+        "post_delay": 1000,
+        "max_hit": 3,
+        "next": [
+            "进入首页"
+        ],
+        "next_doc": "左侧活动栏展开时遮挡底栏：以识别到的活动图标为基准，偏移到屏幕中部空白处点击将其收起。2026-11-02 假成功整治：原为无 next 终端节点，命中即报任务成功（v0.1.0 实机 6s 假成功根因——加载页模板误匹配后点击空白就结束）。改为收起后回到《进入首页》全量恢复列表，成功唯一出口为《首页标志1》（锚点主界面+稳帧）；max_hit=3 防加载页持续误匹配时经《进入首页》重入死循环"
+    }
+}

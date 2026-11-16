@@ -1,0 +1,117 @@
+{
+  "罕见星尘购买": {
+    "next": [
+      "罕见星尘_点页签",
+      "罕见星尘_滑页签",
+      "罕见星尘_点万物贸易所",
+      "罕见星尘_进补给站",
+      "[JumpBack]子任务_进入首页"
+    ]
+  },
+  "罕见星尘_进补给站": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [940, 530, 340, 190],
+        "expected": ["补给站"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "post_delay": 3000,
+    "next": ["罕见星尘_点万物贸易所", "罕见星尘_进补给站"]
+  },
+  "罕见星尘_点万物贸易所": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [0, 0, 320, 720],
+        "expected": ["万物贸易所"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "post_delay": 1500,
+    "next": ["罕见星尘_点页签", "罕见星尘_滑页签", "罕见星尘_点万物贸易所"]
+  },
+  "罕见星尘_滑页签": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [0, 60, 1280, 90],
+        "expected": ["传说星辰区", "拓展研发所", "自选星尘区", "异星灰域",
+                     "粲晶贸易区", "装饰贸易区", "微晶贸易区"],
+        "threshold": 0.2
+      }
+    },
+    "action": {
+      "type": "Swipe",
+      "param": {
+        "begin": [400, 105, 1, 1],
+        "end": [1100, 105, 1, 1],
+        "duration": 600
+      }
+    },
+    "max_hit": 3,
+    "post_delay": 900,
+    "next": ["罕见星尘_点页签"]
+  },
+  "罕见星尘_点页签": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [0, 60, 1280, 90],
+        "expected": ["罕见星尘区"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "max_hit": 3,
+    "post_delay": 2000,
+    "next": ["罕见星尘_就绪", "罕见星尘_滑页签"]
+  },
+  "罕见星尘_就绪": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [280, 260, 960, 340],
+        "expected": ["构建蓝图", "亚金块组", "涅槃精华", "亚金元件"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "DoNothing" },
+    "next": ["罕见星尘_购买"]
+  },
+  "罕见星尘_购买": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "store_purchase",
+        "custom_action_param": {
+          "store_key": "wtrade_rare",
+          "max_items": 20
+        }
+      }
+    },
+    "on_error": ["罕见星尘_失败"],
+    "next": ["罕见星尘_完成"]
+  },
+  "罕见星尘_失败": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "task_fail",
+        "custom_action_param": {
+          "reason": "罕见星尘区购买失败：购买未完成或买后余额差值与价格不符",
+          "cleanup_entry": "通用_回主界面并结束"
+        }
+      }
+    },
+    "next": []
+  },
+  "罕见星尘_完成": {
+    "next": ["通用_回主界面并结束"]
+  }
+}

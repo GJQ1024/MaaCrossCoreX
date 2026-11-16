@@ -1,0 +1,126 @@
+{
+  "stores": {
+    "gift_daily_free": {
+      "name": "礼包-每日免费礼包",
+      "enabled": true,
+      "balance_floor": 0,
+      "evidence": "2026-11-05 19:07 实机：补给站-礼包页 每日免费礼包 售价「免费」；已有 每日免费礼包.json 价格闸",
+      "items": [
+        {
+          "name": "每日免费礼包",
+          "enabled": true,
+          "currency": "free",
+          "max_price": 0
+        }
+      ]
+    },
+    "limited_trade": {
+      "name": "限时贸易所",
+      "enabled": true,
+      "balance_floor": 0,
+      "evidence": "2026-11-05 19:14 实机：货币=金币（右上图标，余额 1312178），刷新 10:45:43，10 件芯片箱均剩余 1",
+      "items": [
+        { "name": "R4征服芯片箱", "enabled": false, "currency": "ingame", "max_price": 14000 },
+        { "name": "R5钝化芯片箱", "enabled": false, "currency": "ingame", "max_price": 120000 },
+        { "name": "R4神速芯片箱", "enabled": false, "currency": "ingame", "max_price": 20000 },
+        { "name": "R4痛击芯片箱", "enabled": false, "currency": "ingame", "max_price": 20000 },
+        { "name": "R5蓄能芯片箱", "enabled": false, "currency": "ingame", "max_price": 120000 },
+        { "name": "R4屏障芯片箱", "enabled": false, "currency": "ingame", "max_price": 20000 },
+        { "name": "R4装填芯片箱", "enabled": false, "currency": "ingame", "max_price": 20000 },
+        { "name": "R4乘风芯片箱", "enabled": false, "currency": "ingame", "max_price": 20000 },
+        { "name": "R5光幕芯片箱", "enabled": false, "currency": "ingame", "max_price": 108000 },
+        { "name": "R4神威芯片箱", "enabled": false, "currency": "ingame", "max_price": 20000 }
+      ]
+    },
+    "wtrade_rare": {
+      "name": "万物贸易所-罕见星尘区",
+      "enabled": true,
+      "balance_floor": 0,
+      "evidence": "2026-11-05 19:10 实机：货币=碎片（右上黄色碎片图标，余额 3960），刷新 25天07:49:10，2 页共 20 件；2026-11-06 15:35 实证构建蓝图 180，余额 3960→3780",
+      "items": [
+        { "name": "构建蓝图", "enabled": false, "currency": "ingame", "price": null, "max_price": 180 },
+        { "name": "微晶x30", "enabled": false, "currency": "ingame", "price": null, "max_price": 48 },
+        { "name": "3星卡牌自选卡", "enabled": false, "currency": "ingame", "price": null, "max_price": 200 },
+        { "name": "亚金块组", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "幻金玉", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "4星卡牌自选卡", "enabled": false, "currency": "ingame", "price": null, "max_price": 750 },
+        { "name": "家具币x10", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "装饰券x10", "enabled": false, "currency": "ingame", "price": null, "max_price": 80 },
+        { "name": "涅槃精华", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "亚金元件", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "初级硅化剂", "enabled": false, "currency": "ingame", "price": null, "max_price": 50 },
+        { "name": "星币x3000", "enabled": false, "currency": "ingame", "price": null, "max_price": 10 },
+        { "name": "涅槃液", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "亚金聚合物", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "荧晶导线", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "技术点x3000", "enabled": false, "currency": "ingame", "price": null, "max_price": 10 },
+        { "name": "亚金沙", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "幻金原石", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "荧晶流体", "enabled": false, "currency": "ingame", "price": null, "max_price": 20 },
+        { "name": "星币x10000", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 }
+      ]
+    },
+    "wtrade_alien": {
+      "name": "万物贸易所-异星灰域",
+      "enabled": true,
+      "balance_floor": 0,
+      "evidence": "2026-11-05 19:12 实机：货币=异星灰域代币（右上深色六边形图标，余额 2003），刷新 3天07:47:25，2 页",
+      "items": [
+        { "name": "传说星尘券x5", "enabled": false, "currency": "ingame", "max_price": 50 },
+        { "name": "构建蓝图", "enabled": false, "currency": "ingame", "max_price": 150 },
+        { "name": "赤狼星源", "enabled": false, "currency": "ingame", "max_price": 150 },
+        { "name": "破碎程式x50", "enabled": false, "currency": "ingame", "max_price": 50 },
+        { "name": "稀有礼物", "enabled": false, "currency": "ingame", "max_price": 16 },
+        { "name": "总队长星源", "enabled": false, "currency": "ingame", "max_price": 300 },
+        { "name": "罕见星尘券x20", "enabled": false, "currency": "ingame", "max_price": 10 },
+        { "name": "高纯硅化剂", "enabled": false, "currency": "ingame", "max_price": 75 },
+        { "name": "进化之息", "enabled": false, "currency": "ingame", "max_price": 40 },
+        { "name": "数据协议", "enabled": false, "currency": "ingame", "max_price": 10 },
+        { "name": "稀有礼物箱", "enabled": false, "currency": "ingame", "max_price": 16 },
+        { "name": "家具币x10", "enabled": false, "currency": "ingame", "max_price": 10 },
+        { "name": "装饰券x5", "enabled": false, "currency": "ingame", "max_price": 20 },
+        { "name": "纯硅化剂", "enabled": false, "currency": "ingame", "max_price": 75 },
+        { "name": "数据协议·高阶", "enabled": false, "currency": "ingame", "max_price": 30 },
+        { "name": "总队长·纯白星源", "enabled": false, "currency": "ingame", "max_price": 0 }
+      ]
+    },
+    "gladiator_shop": {
+      "name": "角斗场-商店兑换",
+      "enabled": true,
+      "balance_floor": 0,
+      "evidence": "2026-11-05 19:20 实机：角斗场主页右上「商店兑换」(1099,49)；货币=角斗积分（粉色五角星嵌五边形，余额 6480）；无刷新倒计时",
+      "items": [
+        { "name": "R5芯片随机箱", "enabled": false, "currency": "ingame", "price": null, "max_price": 400 },
+        { "name": "高纯硅化剂", "enabled": false, "currency": "ingame", "price": null, "max_price": 1200 },
+        { "name": "R4升级芯片", "enabled": false, "currency": "ingame", "price": null, "max_price": 720 },
+        { "name": "R3升级芯片", "enabled": false, "currency": "ingame", "price": null, "max_price": 360 },
+        { "name": "星币x8500", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "R5升级芯片", "enabled": false, "currency": "ingame", "price": null, "max_price": 1440 },
+        { "name": "R4芯片自选箱", "enabled": false, "currency": "ingame", "price": null, "max_price": 320 },
+        { "name": "破碎程式x50", "enabled": false, "currency": "ingame", "price": null, "max_price": 600 },
+        { "name": "R2升级芯片", "enabled": false, "currency": "ingame", "price": null, "max_price": 180 },
+        { "name": "技术点x8500", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 }
+      ]
+    },
+    "mirror_shop": {
+      "name": "镜像竞技-商店兑换",
+      "enabled": true,
+      "balance_floor": 0,
+      "evidence": "2026-11-05 19:17 实机：镜像竞技页「商店兑换」(267,655)；货币=演习积分（蓝白六边形，余额 3752）；刷新 3天07:42:43",
+      "items": [
+        { "name": "虫洞传说星尘", "enabled": false, "currency": "ingame", "price": null, "max_price": 5000 },
+        { "name": "传说星尘券x5", "enabled": false, "currency": "ingame", "price": null, "max_price": 500 },
+        { "name": "构建蓝图", "enabled": false, "currency": "ingame", "price": null, "max_price": 1500 },
+        { "name": "燃料x120", "enabled": false, "currency": "ingame", "price": null, "max_price": 900 },
+        { "name": "R4协击芯片箱", "enabled": false, "currency": "ingame", "price": null, "max_price": 300 },
+        { "name": "星币x500", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "虫洞罕见星尘", "enabled": false, "currency": "ingame", "price": null, "max_price": 1500 },
+        { "name": "罕见星尘券x20", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 },
+        { "name": "武装技能训练III", "enabled": false, "currency": "ingame", "price": null, "max_price": 1500 },
+        { "name": "破碎程式x50", "enabled": false, "currency": "ingame", "price": null, "max_price": 500 },
+        { "name": "R4反击芯片箱", "enabled": false, "currency": "ingame", "price": null, "max_price": 300 },
+        { "name": "技术点x50", "enabled": false, "currency": "ingame", "price": null, "max_price": 100 }
+      ]
+    }
+  }
+}

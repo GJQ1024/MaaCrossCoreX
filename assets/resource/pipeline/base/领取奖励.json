@@ -1,0 +1,739 @@
+{
+    "领奖_记忆门禁": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_gate",
+        "custom_action_param": { "task": "DailyRewards", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 5 },
+        "next": [
+            "领奖_资源前"
+        ],
+        "on_error": [
+            "领奖_记忆跳过"
+        ],
+        "next_doc": "2026-11-02 任务记忆接入：链首门禁（新 interface entry）。邮箱+每日+通行证一天一轮；gate 返回 False → 节点失败 → on_error 早退。资源 before 挂门禁之后：拦截时不留孤儿 before 污染下次配对"
+    },
+
+    "领奖_资源前": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "DailyRewards", "phase": "before" },
+        "next": [
+            "领取奖励"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：任务前快照（门禁放行后）"
+    },
+
+    "领奖_资源后": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "DailyRewards", "phase": "after" },
+        "next": [
+            "通用_确认主界面"
+        ],
+        "on_error": [
+            "通用_确认主界面"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：任务后差值，挂在回到主界面之后（通行证_结束时仍在深层页读不到顶栏）。on_error 兜底确保流程继续"
+    },
+
+    "领奖_记忆跳过": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next_doc": "门禁拦截早退终端（无 next）：不写完成记录。2026-11-03 可观测化：gate 以 WARNING 打印「跳过≠完成」，并向 task_memory 目录追加 *.events.jsonl（event=skip），串跑复盘据此区分跳过与真实完成"
+    },
+
+    "领奖_记忆完成": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_complete",
+        "custom_action_param": { "task": "DailyRewards", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 5 },
+        "next": [
+            "领奖_回主界面"
+        ],
+        "next_doc": "2026-11-02 任务记忆接入：完成记录挂在《通行证_结束》之后（三段全部走完的唯一出口），然后回主界面读资源"
+    },
+
+    "领奖_回主界面": {
+        "next": [
+            "领奖_确认主界面读资源",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 60000,
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：回到主界面（资源统计必须在主界面才能读到顶栏）"
+    },
+
+    "领奖_确认主界面读资源": {
+        "recognition": "OCR",
+        "expected": [
+            "补给站"
+        ],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": [
+            "领奖_资源后"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：确认已回到主界面（OCR 补给站）后才触发资源后读数"
+    },
+
+    "领取奖励": {
+        "timeout": 180000,
+        "next": [
+            "[JumpBack]子任务_点击取消",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "[JumpBack]子任务_关闭促销弹窗",
+            "领取奖励_跳过邮箱",
+            "领奖_锚点检查",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "3.3.1 重做：邮件 → 每日任务 → 通行证（勘探指南），逐段领取后回主界面；跳过邮箱节点供 interface 选项「是否领取邮箱内容」使用"
+    },
+
+    "领取奖励_跳过邮箱": {
+        "recognition": "DirectHit",
+        "enabled": false,
+        "next": [
+            "领奖_确认主界面进每日",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "next_doc": "interface 选项置 enabled=true 时跳过邮件段，直接进入每日任务段"
+    },
+
+    "领奖_锚点检查": {
+        "recognition": "OCR",
+        "expected": [
+            "补给站"
+        ],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": [
+            "领奖_进邮件"
+        ],
+        "next_doc": "在主界面设置锚点「主界面」后进入邮件；不在主界面则退回进入首页"
+    },
+
+    "领奖_进邮件": {
+        "recognition": "TemplateMatch",
+        "template": "Infrastructures/mail.png",
+        "roi": [1025, 15, 120, 50],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "target": "[Anchor]主界面",
+        "target_offset": [63, -605, 0, 0],
+        "post_delay": 2000,
+        "next": [
+            "邮件_阶段"
+        ],
+        "on_error": [
+            "[JumpBack]子任务_进入首页"
+        ],
+        "next_doc": "以主界面锚点偏移到右上信封图标点击"
+    },
+
+    "邮件_阶段": {
+        "next": [
+            "邮件_领循环"
+        ],
+        "timeout": 30000,
+        "next_doc": "有一键领取就点（循环，max_hit 防灰按钮死循环），没有则结束邮件阶段"
+    },
+
+    "邮件_领循环": {
+        "next": [
+            "邮件_一键领取",
+            "邮件_结束"
+        ]
+    },
+
+    "邮件_一键领取": {
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "btn",
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {
+                                "template": [
+                                    "邮件_一键领取.png"
+                                ],
+                                "roi": [200, 580, 240, 110],
+                                "threshold": 0.85
+                            }
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "ColorMatch",
+                            "param": {
+                                "roi": [228, 612, 160, 62],
+                                "method": 4,
+                                "lower": [120, 85, 0],
+                                "upper": [255, 230, 125],
+                                "count": 2000
+                            }
+                        }
+                    }
+                ],
+                "box_index": 0
+            }
+        },
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 2,
+        "next": [
+            "[JumpBack]子任务_获得物品",
+            "邮件_领循环"
+        ],
+        "next_doc": "2026-11-08 补颜色闸（P-056）：模板 邮件_一键领取.png（实机原帧 236,620 裁切 140x46）0.85 + 金色 RGB 像素 count 2000。实测正例 1.0000/金色 6008，灰态负例最高 0.7973/金色 0（模板分不开灰态，由颜色判据挡）；非邮件页最高 0.2481。max_hit=2 保留作死循环兜底"
+    },
+
+    "邮件_结束": {
+        "action": "DoNothing",
+        "next": [
+            "领奖_邮件完转每日"
+        ]
+    },
+
+    "领奖_邮件完转每日": {
+        "next": [
+            "领奖_确认主界面进每日",
+            "[JumpBack]子任务_点击首页按钮",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 45000,
+        "next_doc": "从邮件页回主界面后进入每日任务"
+    },
+
+    "领奖_确认主界面进每日": {
+        "recognition": "OCR",
+        "expected": [
+            "补给站"
+        ],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": [
+            "领奖_进每日任务"
+        ]
+    },
+
+    "领奖_进每日任务": {
+        "recognition": "OCR",
+        "expected": [
+            "任务"
+        ],
+        "roi": [640, 600, 120, 100],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 2000,
+        "next": [
+            "每日任务_日常页签"
+        ],
+        "on_error": [
+            "[JumpBack]子任务_进入首页"
+        ],
+        "next_doc": "3.3.1 每日任务入口在主界面底部「任务」图标（邮件页已无每日任务页签）；进入后先显式切日常页签"
+    },
+
+    "每日任务_日常页签": {
+        "recognition": "OCR",
+        "expected": [
+            "日常"
+        ],
+        "roi": [20, 80, 240, 240],
+        "pre_wait_freezes": {
+            "time": 800,
+            "threshold": 0.95
+        },
+        "timeout": 8000,
+        "action": "Click",
+        "post_delay": 1200,
+        "max_hit": 2,
+        "next": [
+            "每日任务_阶段"
+        ],
+        "on_error": [
+            "每日任务_阶段"
+        ],
+        "next_doc": "2026-11-11 页签复位：游戏记住上次停留页签，本任务上一轮收尾停在周常，若不显式切日常，下面的「一键领取」会点在周常页。判据取 nav_graph missions_daily.arrival（A：OCR 日常 ROI [20,80,240,240]），点识别框中心。放在使用点而非上一段收尾：上轮中途失败/被杀时收尾复位不会执行，使用点切页始终成立"
+    },
+
+    "每日任务_阶段": {
+        "next": [
+            "每日任务_领循环"
+        ],
+        "timeout": 30000,
+        "next_doc": "优先一键领取（max_hit=2 防灰按钮死循环），无则今日已领完"
+    },
+
+    "每日任务_领循环": {
+        "next": [
+            "每日任务_一键领取",
+            "每日任务_结束"
+        ]
+    },
+
+    "每日任务_一键领取": {
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "btn",
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {
+                                "template": [
+                                    "一键领取.png"
+                                ],
+                                "roi": [1000, 60, 260, 90],
+                                "threshold": 0.7
+                            }
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "ColorMatch",
+                            "param": {
+                                "roi": [1060, 75, 120, 55],
+                                "method": 4,
+                                "lower": [120, 85, 0],
+                                "upper": [255, 230, 125],
+                                "count": 800
+                            }
+                        }
+                    }
+                ],
+                "box_index": 0
+            }
+        },
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 2,
+        "next": [
+            "[JumpBack]子任务_获得物品",
+            "每日任务_领循环"
+        ],
+        "next_doc": "2026-11-04 修复空点灰按钮：模板阈值保持 0.7（可用 0.998/灰 0.826，余量≥0.126），叠加按钮金色像素判据（可用 3309 / 灰 0，count=800）；灰态被颜色判据挡掉，不再靠 max_hit 硬停"
+    },
+
+    "每日任务_结束": {
+        "action": "DoNothing",
+        "next": [
+            "常规任务奖励_页面判据"
+        ],
+        "next_doc": "2026-11-11 每日领完后顺手领同一页的周常奖励，再回主界面进通行证"
+    },
+
+    "常规任务奖励_页面判据": {
+        "recognition": "OCR",
+        "expected": [
+            "常规任务"
+        ],
+        "roi": [20, 150, 180, 300],
+        "pre_wait_freezes": {
+            "time": 800,
+            "threshold": 0.95
+        },
+        "timeout": 5000,
+        "action": "DoNothing",
+        "next": [
+            "常规任务奖励_周常页签"
+        ],
+        "on_error": [
+            "常规任务奖励_回任务页"
+        ],
+        "next_doc": "判据取 docs/导航图.md 任务-日常（A）：OCR「常规任务」ROI [20,150,180,300]。不在本页则走自导航，不依赖上一段留下的页面"
+    },
+
+    "常规任务奖励_回任务页": {
+        "next": [
+            "常规任务奖励_点任务",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 45000,
+        "next_doc": "自导航：已在主界面直接点任务；不在则先回首页再点"
+    },
+
+    "常规任务奖励_点任务": {
+        "recognition": "OCR",
+        "expected": [
+            "任务"
+        ],
+        "roi": [640, 600, 120, 100],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 2000,
+        "max_hit": 2,
+        "next": [
+            "常规任务奖励_页面判据"
+        ],
+        "on_error": [
+            "常规任务奖励_结束"
+        ],
+        "next_doc": "复用 领奖_进每日任务 的已验入口（OCR 任务 [640,600,120,100]）；两次仍进不去则跳过本段，按正常结束"
+    },
+
+    "常规任务奖励_周常页签": {
+        "recognition": "OCR",
+        "expected": [
+            "周常"
+        ],
+        "roi": [20, 300, 160, 40],
+        "pre_wait_freezes": {
+            "time": 800,
+            "threshold": 0.95
+        },
+        "timeout": 8000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 2,
+        "next": [
+            "常规任务奖励_周常确认"
+        ],
+        "on_error": [
+            "常规任务奖励_结束"
+        ],
+        "next_doc": "左栏「周常」ROI 取 nav_graph missions_weekly.entry（A，2026-11-05 实机）；点 OCR 框中心，不写死坐标"
+    },
+
+    "常规任务奖励_周常确认": {
+        "recognition": "OCR",
+        "expected": [
+            "每周一3点重置，点击按钮可前往或领取"
+        ],
+        "roi": [650, 185, 560, 110],
+        "pre_wait_freezes": {
+            "time": 800,
+            "threshold": 0.95
+        },
+        "timeout": 8000,
+        "action": "DoNothing",
+        "next": [
+            "常规任务奖励_周常一键领取"
+        ],
+        "on_error": [
+            "常规任务奖励_结束"
+        ],
+        "next_doc": "周常页判据取 nav_graph missions_weekly.arrival（A，实测 0.984 / 0.997）"
+    },
+
+    "常规任务奖励_周常一键领取": {
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "btn",
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {
+                                "template": [
+                                    "一键领取.png"
+                                ],
+                                "roi": [1000, 60, 260, 90],
+                                "threshold": 0.7
+                            }
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "ColorMatch",
+                            "param": {
+                                "roi": [1060, 75, 120, 55],
+                                "method": 4,
+                                "lower": [120, 85, 0],
+                                "upper": [255, 230, 125],
+                                "count": 800
+                            }
+                        }
+                    }
+                ],
+                "box_index": 0
+            }
+        },
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 2,
+        "next": [
+            "[JumpBack]通用-遮罩处理",
+            "常规任务奖励_周常一键领取"
+        ],
+        "on_error": [
+            "常规任务奖励_结束"
+        ],
+        "next_doc": "按钮判据整段复用 每日任务_一键领取（模板 一键领取.png + 金色像素闸，2026-11-01 实跑）；灰态/不存在 → 跳过本页签。领取成功必须由 通用-遮罩处理 命中「获得物品」并关闭，点按钮本身不算成功"
+    },
+
+    "常规任务奖励_结束": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "领奖_每日完转通行证"
+        ],
+        "next_doc": "本段收尾：回主界面后进通行证，维持原任务后续链路不变"
+    },
+
+    "领奖_每日完转通行证": {
+        "next": [
+            "领奖_确认主界面进通行证",
+            "[JumpBack]子任务_点击首页按钮",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 45000,
+        "next_doc": "从每日任务页回主界面后进入通行证（勘探指南）"
+    },
+
+    "领奖_确认主界面进通行证": {
+        "recognition": "OCR",
+        "expected": [
+            "补给站"
+        ],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": [
+            "领奖_进通行证"
+        ]
+    },
+
+    "领奖_进通行证": {
+        "recognition": "OCR",
+        "expected": [
+            "勘探指南"
+        ],
+        "roi": [0, 80, 160, 80],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 2000,
+        "next": [
+            "通行证_点任务"
+        ],
+        "on_error": [
+            "[JumpBack]子任务_进入首页"
+        ],
+        "next_doc": "3.3.1 通行证入口在主界面左侧「勘探指南」"
+    },
+
+    "通行证_点任务": {
+        "recognition": "OCR",
+        "expected": [
+            "任务"
+        ],
+        "roi": [950, 280, 120, 60],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "next": [
+            "通行证_每日阶段"
+        ],
+        "next_doc": "通行证等级页右上「任务」按钮（红点提示有可领奖励）"
+    },
+
+    "通行证_每日阶段": {
+        "next": [
+            "通行证_每日领奖励",
+            "通行证_切每周"
+        ],
+        "timeout": 30000
+    },
+
+    "通行证_每日领奖励": {
+        "recognition": "OCR",
+        "expected": [
+            "领取奖励"
+        ],
+        "roi": [760, 190, 280, 330],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 15,
+        "next": [
+            "[JumpBack]子任务_获得物品",
+            "通行证_每日领奖励"
+        ],
+        "on_error": [
+            "通行证_切每周"
+        ],
+        "next_doc": "2026-11-04 拆分：每日阶段领完后识别失败 → on_error 切每周，不再让整任务假失败；max_hit=15 防点击未生效死循环"
+    },
+
+    "通行证_每周领奖励": {
+        "recognition": "OCR",
+        "expected": [
+            "领取奖励"
+        ],
+        "roi": [760, 190, 280, 330],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 15,
+        "next": [
+            "[JumpBack]子任务_获得物品",
+            "通行证_每周领奖励"
+        ],
+        "on_error": [
+            "通行证_切本期"
+        ],
+        "next_doc": "2026-11-04 拆分：每周阶段领完后识别失败 → on_error 切本期（本轮实跑就是卡在这里）"
+    },
+
+    "通行证_本期领奖励": {
+        "recognition": "OCR",
+        "expected": [
+            "领取奖励"
+        ],
+        "roi": [760, 190, 280, 330],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "max_hit": 15,
+        "next": [
+            "[JumpBack]子任务_获得物品",
+            "通行证_本期领奖励"
+        ],
+        "on_error": [
+            "通行证_结束"
+        ],
+        "next_doc": "2026-11-04 拆分：本期阶段领完后识别失败 → on_error 直接结束本段并写完成记忆"
+    },
+
+    "通行证_切每周": {
+        "recognition": "OCR",
+        "expected": [
+            "每周任务"
+        ],
+        "roi": [100, 200, 260, 80],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "next": [
+            "通行证_每周阶段"
+        ]
+    },
+
+    "通行证_每周阶段": {
+        "next": [
+            "通行证_每周领奖励",
+            "通行证_切本期"
+        ],
+        "timeout": 30000
+    },
+
+    "通行证_切本期": {
+        "recognition": "OCR",
+        "expected": [
+            "本期任务"
+        ],
+        "roi": [100, 290, 260, 90],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1500,
+        "next": [
+            "通行证_本期阶段"
+        ]
+    },
+
+    "通行证_本期阶段": {
+        "next": [
+            "通行证_本期领奖励",
+            "通行证_结束"
+        ],
+        "timeout": 30000
+    },
+
+    "通行证_结束": {
+        "action": "DoNothing",
+        "next": [
+            "领奖_记忆完成"
+        ],
+        "next_doc": "2026-11-02 资源统计接入：先写记忆完成，再回主界面，最后读资源差值（资源统计必须在主界面才能读到顶栏）"
+    }
+}

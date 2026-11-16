@@ -1,0 +1,680 @@
+{
+    "$__mpe_config_芯片制造": {
+        "$__mpe_code": {
+            "prefix": "",
+            "coordinateMode": "absolute-v1",
+            "lastSyncTime": 1789922591898,
+            "isModifiedExternally": false,
+            "isDeleted": false,
+            "filePath": "C:\\Users\\thomas\\Desktop\\成品攀比\\MAAlocalhost\\resource\\pipeline\\base\\芯片制造.json",
+            "savedViewport": {
+                "x": 268,
+                "y": 176,
+                "zoom": 0.4
+            },
+            "filename": "芯片制造",
+            "version": "v1.10.1"
+        }
+    },
+    "$__mpe_external_子任务_进入首页_芯片制造": {
+        "$__mpe_code": {
+            "position": {
+                "x": 1029,
+                "y": 1112
+            }
+        }
+    },
+    "任务结束": {
+        "next": [
+            "子任务_进入首页"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 621,
+                "y": 760
+            }
+        }
+    },
+    "开始制作流程": {
+        "timeout": 4000,
+        "next": [
+            "点击新增按钮",
+            "[JumpBack]滑动屏幕_芯片位置"
+        ],
+        "on_error": [
+            "任务结束"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 305,
+                "y": 317
+            }
+        }
+    },
+    "收菜": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": [
+                    "xinpian/收菜按钮.png"
+                ],
+                "roi": [
+                    380,
+                    235,
+                    100,
+                    90
+                ]
+            }
+        },
+        "next_doc": "2026-11-07 模板换成 34×34 纯图标（原 53×57 含动态「3/3」与红色 ! 角标）；基地总览两帧 0.987/[411,263]、0.986/[405,257]，故收 ROI [380,235,100,90] 覆盖两帧位置；异界面最高 0.698。2026-11-07 收菜按钮识别失败（可能已不在基地总览）时接回构建段，避免整条链卡死",
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "获得芯片",
+            "芯片满了"
+        ],
+        "on_error": [
+            "芯片构建"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": -1057,
+                "y": 11
+            }
+        }
+    },
+    "改造": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "改造"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "芯片_改造费用闸"
+        ],
+        "on_error": [
+            "任务结束"
+        ],
+        "next_doc": "2026-11-07 详情页未出现「改造」入口（槽位已满/页面未加载）时直接任务结束，避免错误循环",
+        "$__mpe_code": {
+            "position": {
+                "x": 2715,
+                "y": -485
+            }
+        }
+    },
+    "芯片_改造费用闸": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "cost_guard",
+                "custom_action_param": {
+                    "roi": [340, 300, 600, 300],
+                    "deny": ["粲晶", "星贸凭证", "¥", "$"],
+                    "unknown": "allow",
+                    "on_deny": ["任务结束"],
+                    "reason": "芯片改造前画面出现付费货币"
+                }
+            }
+        },
+        "next": [
+            "改造_副本1"
+        ],
+        "next_doc": "2026-11-03 点击开始改造前读一次付费货币"
+    },
+    "改造_副本1": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "开始改造"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "改造完成"
+        ],
+        "on_error": [
+            "任务结束"
+        ],
+        "next_doc": "2026-11-07 未出现「开始改造」（改造槽已满/按钮未就绪）时直接任务结束，避免错误循环",
+        "$__mpe_code": {
+            "position": {
+                "x": 2982,
+                "y": 30
+            }
+        }
+    },
+    "改造完成": {
+        "next": [
+            "芯片_槽位检查"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 932,
+                "y": 40
+            }
+        }
+    },
+    "芯片_槽位检查": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "chip_no_target",
+                "custom_action_param": {
+                    "mode": "slot_guard",
+                    "slots_roi": [980, 100, 200, 60]
+                }
+            }
+        },
+        "next": [
+            "开始制作流程"
+        ],
+        "on_error": [
+            "任务结束"
+        ],
+        "next_doc": "2026-11-07 每轮改造后预检改造槽：已满则记「槽位不足，未改造」并正常结束；槽位读不到按有余量继续，不阻断后续主技能",
+        "$__mpe_code": {
+            "position": {
+                "x": 1200,
+                "y": 40
+            }
+        }
+    },
+    "暂无芯片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "暂无芯片"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "chip_no_target",
+                "custom_action_param": {
+                    "slots_roi": [980, 100, 200, 60],
+                    "cleanup_entry": "任务结束"
+                }
+            }
+        },
+        "next": [
+            "任务结束"
+        ],
+        "on_error": [],
+        "next_doc": "2026-11-07 改造槽有占用时无芯片可选是常态：回主页正常结束并写跳过日志；仅当槽位可读且为 0/4（费用闸已放行）才判失败。槽位读不到按常态处理并在日志注明。",
+        "$__mpe_code": {
+            "position": {
+                "x": 2248,
+                "y": 565
+            }
+        }
+    },
+    "滑动屏幕": {
+        "enabled": false,
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    763,
+                    488,
+                    19,
+                    17
+                ],
+                "end": [
+                    [
+                        679,
+                        19,
+                        13,
+                        13
+                    ]
+                ],
+                "duration": [
+                    3000
+                ]
+            }
+        },
+        "next": [
+            "选择芯片（多选项）",
+            "[JumpBack]滑动屏幕_副本1"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 1327,
+                "y": -577
+            }
+        }
+    },
+    "滑动屏幕_副本1": {
+        "enabled": false,
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    651,
+                    324,
+                    14,
+                    16
+                ],
+                "end": [
+                    [
+                        655,
+                        184,
+                        14,
+                        17
+                    ]
+                ],
+                "duration": [
+                    3000
+                ]
+            }
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 1594,
+                "y": -414
+            }
+        }
+    },
+    "滑动屏幕_芯片位置": {
+        "max_hit": 1,
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    651,
+                    324,
+                    14,
+                    16
+                ],
+                "end": [
+                    [
+                        655,
+                        184,
+                        14,
+                        17
+                    ]
+                ],
+                "duration": [
+                    3000
+                ]
+            }
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 886,
+                "y": 233
+            }
+        }
+    },
+    "点击建造按钮": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": [
+                    "xinpian/template_1789913607081.png"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "开始制作流程"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 14,
+                "y": -487
+            }
+        }
+    },
+    "点击新增按钮": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": [
+                    "xinpian/制造预备.png"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "筛选"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 553,
+                "y": -203
+            }
+        }
+    },
+    "点击芯片": {
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    138,
+                    151,
+                    54,
+                    57
+                ]
+            }
+        },
+        "next": [
+            "改造"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 2413,
+                "y": -485
+            }
+        }
+    },
+    "确认芯片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确定"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "暂无芯片",
+            "点击芯片"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 2016,
+                "y": -505
+            }
+        }
+    },
+    "筛选": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "筛选",
+                    "筛选中"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "芯片_筛选选片"
+        ],
+        "next_doc": "2026-11-07 筛选按钮在已有条件时显示「筛选中」，一并识别；后续改由 chip_filter_select 按面板结构勾选",
+        "$__mpe_code": {
+            "position": {
+                "x": 802,
+                "y": -467
+            }
+        }
+    },
+    "芯片_筛选选片": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "chip_filter_select",
+                "custom_action_param": {
+                    "targets": [],
+                    "levels": ["R2", "R3"],
+                    "chip_type": "全部",
+                    "wear": "全部",
+                    "cursor": 0,
+                    "card_point": [170, 175]
+                }
+            }
+        },
+        "next": [
+            "改造",
+            "任务结束"
+        ],
+        "on_error": [
+            "暂无芯片"
+        ],
+        "next_doc": "2026-11-08 由任务面板 option 反推筛选面板点选（芯片品质为多选 q_R1..q_R5，类型/佩戴单选，主技能多选 t_*）。levels 为品质默认值；实际按「品质外层 × 主技能内层」展开成组，cursor 是组的扁平序号。targets 默认空数组：主技能未勾选时直接跳过建造段正常结束；每轮只选一个品质+一个主技能、只点第一张卡，进度写回 cursor，改造完成后回到本节点续跑下一组；某项面板找不到或无候选则记 error 跳过，不顶替其他芯片；筛选后空列表走暂无芯片",
+        "$__mpe_code": {
+            "position": {
+                "x": 1072,
+                "y": -606
+            }
+        }
+    },
+    "芯片制作任务开始": {
+        "next": [
+            "进入基建",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": -1856,
+                "y": -433
+            }
+        }
+    },
+    "芯片构建": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "研发中心"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "芯片_费用闸"
+        ],
+        "on_error": [
+            "任务结束"
+        ],
+        "next_doc": "2026-11-07 研发中心入口识别失败时回主页正常结束，不把整条链卡死",
+        "$__mpe_code": {
+            "position": {
+                "x": -312,
+                "y": -469
+            }
+        }
+    },
+    "芯片_费用闸": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "cost_guard",
+                "custom_action_param": {
+                    "roi": [340, 300, 600, 300],
+                    "deny": ["粲晶", "星贸凭证", "¥", "$"],
+                    "unknown": "allow",
+                    "on_deny": ["任务结束"],
+                    "reason": "芯片建造前画面出现付费货币"
+                }
+            }
+        },
+        "next": [
+            "点击建造按钮"
+        ],
+        "next_doc": "2026-11-03 点击建造前读一次付费货币；命中粲晶/星贸凭证/¥/$ 即结束"
+    },
+    "芯片满了": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "上限"
+                ]
+            }
+        },
+        "next": [
+            "点确定"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": -815,
+                "y": 673
+            }
+        }
+    },
+    "获得芯片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "获得物品"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "芯片构建"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": -734,
+                "y": -156
+            }
+        }
+    },
+    "进入基建": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": [
+                    "基地.png"
+                ],
+                "roi": [
+                    560,
+                    600,
+                    150,
+                    120
+                ],
+                "threshold": 0.7
+            }
+        },
+        "next_doc": "2026-11-04 修复假命中：原 OCR expected[\"基地\"] 无 ROI，命中正文 tooltip；改为底部基地按钮图标模板（46×46），主界面帧 0.846–0.883，基地建造页 ≤0.325，阈值 0.7 余量≥0.146",
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "收菜",
+            "芯片构建"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": -1369,
+                "y": -460
+            }
+        }
+    },
+    "选择等级（多选项）": {
+        "enabled": false,
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "R2"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "滑动屏幕"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 1072,
+                "y": -606
+            }
+        }
+    },
+    "选择芯片（多选项）": {
+        "enabled": false,
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "神威"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "确认芯片"
+        ],
+        "on_error": [
+            "暂无芯片"
+        ],
+        "next_doc": "2026-11-04 筛选后空列表导致「神威」识别失败时，走暂无芯片的显式库存不足退出，不在选芯片节点静默失败",
+        "$__mpe_code": {
+            "position": {
+                "x": 1591,
+                "y": -713
+            }
+        }
+    },
+    "点确定": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确定"
+                ]
+            }
+        },
+        "pre_delay": 500,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "任务结束"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": -386,
+                "y": 658
+            }
+        }
+    }
+}

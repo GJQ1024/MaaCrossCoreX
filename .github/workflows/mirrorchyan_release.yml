@@ -1,0 +1,33 @@
+name: mirrorchyan_release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        default: ''
+        required: false
+
+jobs:
+  mirrorchyan:
+    if: ${{ github.repository_owner == 'MAACrossCore' }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [win, macos, linux, android]
+        arch: [aarch64, x86_64]
+    steps:
+      - uses: MirrorChyan/uploading-action@v1
+        with:
+          filetype: latest-release
+          filename: ${{ format('MaaXXX-{0}-{1}-*', matrix.os, matrix.arch) }}
+          mirrorchyan_rid: MCC_Framework
+          tag: ${{ inputs.tag }}
+
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+
+          owner: MAACrossCore
+          repo: MCC_Framework
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}

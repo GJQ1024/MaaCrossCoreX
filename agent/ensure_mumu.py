@@ -1,0 +1,872 @@
+"""MFA pretask: discover MuMu 12, start it, and configure ADB (does not launch the game)."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import shutil
+import socket
+import string
+import subprocess
+import sys
+import time
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CACHE_FILE = PROJECT_ROOT / "config" / "mumu_runtime.json"
+_STARTED_AT = time.monotonic()
+
+# 身份锚点与 scripts/shell_device_binding.py 共用同一份实现（agent/device_identity.py），
+# 只认一个 android_id；真机等其它装了游戏的设备直接滤掉，不参与歧义判定。
+# 壳自带的嵌入式 Python 用 python312._pth 固定 sys.path，不会自动加上脚本目录，
+# 不显式插就 import 不到同目录模块（2026-11-11 上机 pretask 因此退出码 1）。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from device_identity import filter_by_target, pick_entry, target_android_id  # noqa: E402
+
+
+def elapsed():
+    """从脚本启动到现在的秒数，用于定位卡在哪一步。"""
+    return time.monotonic() - _STARTED_AT
+# 启动任务的 entry 目前是「启动_资源前」。旧包/旧配置里的「进入首页」「StartGameTask」
+# 仍然保留：用户升级后可能还留着历史 default.json，删掉会让 pretask 误判"没勾启动游戏"
+# 而不启动模拟器，所以这里做兼容并集，而不是只认新名。
+START_ENTRIES = {"启动_资源前", "进入首页", "StartGameTask"}
+INSTANCE_OPTION = "MuMu实例"
+AUTOSTART_OPTION = "模拟器自动启动"
+REDETECT_OPTION = "每次重新检测连接"
+# 认包不认端口：端口由模拟器分配、会漂移，也会被 is_main 抢走；装没装游戏才是客观事实。
+GAME_PACKAGE = os.environ.get("MFA_GAME_PACKAGE") or "com.megagame.crosscore.bilibili"
+
+EXIT_OK = 0
+EXIT_FAIL = 1
+EXIT_AMBIGUOUS = 3
+
+
+# MCC 调 pretask 时 stdout 不会进 MFA 日志，所以额外落一份文件日志，
+# 否则每次排查这块都是黑盒（只能看到「卡了 N 秒然后 NOT_STARTED」）。
+LOG_FILE = PROJECT_ROOT / "logs" / "ensure_mumu.log"
+
+
+def log(message):
+    print(f"[MuMu pretask] {message}", flush=True)
+    try:
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with LOG_FILE.open("a", encoding="utf-8") as handle:
+            handle.write(f"[{stamp}] {message}\n")
+    except Exception:
+        pass  # 日志失败绝不影响 pretask 本身
+
+
+def run(args, timeout=30):
+    try:
+        result = subprocess.run(
+            [str(value) for value in args],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=timeout,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        return result.returncode, result.stdout.strip(), result.stderr.strip()
+    except Exception as exc:
+        return 1, "", str(exc)
+
+
+def load_json(path, default=None):
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {} if default is None else default
+
+
+def save_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    for attempt in range(5):
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            time.sleep(0.2)
+
+
+def instance_files():
+    directory = PROJECT_ROOT / "config" / "instances"
+    return sorted(directory.glob("*.json")) if directory.exists() else []
+
+
+def selected_instance():
+    explicit_path = os.environ.get("MFA_INSTANCE_CONFIG_PATH")
+    if explicit_path:
+        path = Path(explicit_path)
+        if path.is_file():
+            return path, load_json(path)
+        log(f"MFA 指定的实例配置不存在：{path}")
+
+    fallback = None
+    for path in instance_files():
+        data = load_json(path)
+        fallback = fallback or (path, data)
+        for task in data.get("TaskItems", []):
+            if task.get("entry") in START_ENTRIES and task.get("default_check", False):
+                return path, data
+    return fallback or (None, {})
+
+
+def start_game_selected(instance):
+    return any(
+        task.get("entry") in START_ENTRIES and task.get("default_check", False)
+        for task in instance.get("TaskItems", [])
+    )
+
+
+def start_task(instance):
+    return next(
+        (task for task in instance.get("TaskItems", []) if task.get("entry") in START_ENTRIES),
+        {},
+    )
+
+
+def interface_data():
+    for path in (PROJECT_ROOT / "interface.json", PROJECT_ROOT / "assets" / "interface.json"):
+        if path.is_file():
+            return load_json(path)
+    return {}
+
+
+def task_option_case(instance, option_name, default):
+    selected = next(
+        (option for option in start_task(instance).get("option", []) if option.get("name") == option_name),
+        None,
+    )
+    definition = interface_data().get("option", {}).get(option_name, {})
+    cases = definition.get("cases", [])
+    if selected is None:
+        return str(definition.get("default_case", default))
+    index = selected.get("index", 0)
+    if isinstance(index, int) and 0 <= index < len(cases):
+        return str(cases[index].get("name", default))
+    return default
+
+
+def runtime_settings(instance):
+    configured_index = task_option_case(instance, INSTANCE_OPTION, "自动")
+    env_index = os.environ.get("MUMU_VM_INDEX")
+    requested_index = env_index if env_index is not None else configured_index
+    requested_index = int(requested_index) if str(requested_index).isdigit() else None
+    # 默认不再由自动化 launch 实例（2026-11-02 决策，见 docs/device.md 已知问题）：
+    # 实测短间隔重复 launch 后 MuMuNxDevice.exe 会在 2-4 秒内崩溃。
+    # 只有显式设置 AUTO_LAUNCH=1（且实例配置里的「模拟器自动启动」没关）才允许尝试一次。
+    env_switch = os.environ.get("AUTO_LAUNCH", "").strip().lower() in ("1", "true", "yes")
+    option_start = task_option_case(instance, AUTOSTART_OPTION, "开启") != "关闭"
+    return {
+        "vm_index": requested_index,
+        "auto_start": env_switch and option_start,
+        "redetect": task_option_case(instance, REDETECT_OPTION, "关闭") == "开启",
+        "minimize_after_launch": bool(instance.get("MinimizeEmulatorAfterLaunch", False)),
+    }
+
+
+def registry_locations():
+    if os.name != "nt":
+        return []
+    try:
+        import winreg
+    except ImportError:
+        return []
+    locations = []
+    roots = (
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+    )
+    for hive, key_name in roots:
+        try:
+            with winreg.OpenKey(hive, key_name) as root:
+                for index in range(winreg.QueryInfoKey(root)[0]):
+                    try:
+                        with winreg.OpenKey(root, winreg.EnumKey(root, index)) as item:
+                            name = str(winreg.QueryValueEx(item, "DisplayName")[0])
+                            if "mumu" not in name.lower() and "网易模拟器" not in name:
+                                continue
+                            for value_name in ("InstallLocation", "DisplayIcon", "UninstallString"):
+                                try:
+                                    value = str(winreg.QueryValueEx(item, value_name)[0]).strip(' "')
+                                    locations.append(Path(value).parent if value.lower().endswith(".exe") else Path(value))
+                                except OSError:
+                                    pass
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+    return locations
+
+
+def candidate_roots():
+    cached = load_json(CACHE_FILE)
+    values = [
+        os.environ.get("MUMU_HOME"),
+        cached.get("root"),
+        os.environ.get("ProgramFiles"),
+        os.environ.get("ProgramFiles(x86)"),
+        os.environ.get("LOCALAPPDATA"),
+    ]
+    values.extend(registry_locations())
+    for letter in string.ascii_uppercase:
+        drive = Path(f"{letter}:\\")
+        if drive.exists():
+            values.extend((
+                drive / "MuMu",
+                drive / "MuMuPlayer-12.0",
+                drive / "Netease" / "MuMu",
+                drive / "Netease" / "MuMuPlayer-12.0",
+                drive / "Program Files" / "Netease" / "MuMu",
+                drive / "Program Files" / "Netease" / "MuMuPlayer-12.0",
+                drive / "Program Files (x86)" / "Netease" / "MuMu",
+                drive / "Program Files (x86)" / "Netease" / "MuMuPlayer-12.0",
+            ))
+    seen = set()
+    for value in values:
+        if not value:
+            continue
+        path = Path(value).expanduser()
+        variants = (
+            path,
+            path / "Netease" / "MuMu",
+            path / "Netease" / "MuMuPlayer-12.0",
+            path / "MuMu",
+            path / "MuMuPlayer-12.0",
+        )
+        for candidate in variants:
+            key = str(candidate).lower()
+            if key not in seen:
+                seen.add(key)
+                yield candidate
+
+
+def find_mumu():
+    explicit_manager = os.environ.get("MUMU_MANAGER")
+    if explicit_manager and Path(explicit_manager).is_file():
+        manager = Path(explicit_manager)
+        root = manager.parent.parent
+        return root, manager, find_adb(root)
+    for root in candidate_roots():
+        manager = root / "nx_main" / "MuMuManager.exe"
+        if manager.is_file():
+            adb = find_adb(root)
+            if adb:
+                return root.resolve(), manager.resolve(), adb.resolve()
+    return None, None, None
+
+
+def find_adb(root):
+    explicit = os.environ.get("MUMU_ADB")
+    if explicit and Path(explicit).is_file():
+        return Path(explicit)
+    # 与 scripts/shell_device_binding.py 的顺序一致：优先 nx_device 自带 adb。
+    # MaaToolkit 枚举出的 Name 用的也是这个路径；写错 adb 路径会直接导致指纹 Name 不匹配。
+    for candidate in sorted(root.glob("nx_device/*/shell/adb.exe"), reverse=True):
+        if candidate.is_file():
+            return candidate
+    for relative in (Path("shell/adb.exe"), Path("nx_main/adb.exe"), Path("adb.exe")):
+        candidate = root / relative
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def manager_info(manager, index):
+    code, output, _ = run([manager, "info", "--vmindex", index], timeout=12)
+    if code or not output:
+        return {}
+    try:
+        info = json.loads(output)
+        return info if info.get("error_code", 0) == 0 and "index" in info else {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def manager_info_all(manager):
+    """一次读取全部实例（info -v all），返回 {index: info}。"""
+    code, output, _ = run([manager, "info", "-v", "all"], timeout=20)
+    if code or not output:
+        return {}
+    try:
+        data = json.loads(output)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    result = {}
+    for key, value in data.items():
+        if str(key).isdigit() and isinstance(value, dict):
+            result[int(key)] = value
+    return result
+
+
+def residual_headless_process():
+    """是否还有残留的 MuMuVMMHeadless（VM 进程没退干净）。"""
+    code, output, _ = run(
+        ["tasklist", "/FI", "IMAGENAME eq MuMuVMMHeadless.exe", "/FO", "CSV", "/NH"],
+        timeout=10,
+    )
+    return code == 0 and "mumuvmmheadless.exe" in output.lower()
+
+
+def port_in_use(port):
+    """目标 adb 端口是否已被占用（能连上就说明有别的进程在监听）。"""
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
+def launch_blockers(index, info):
+    """AUTO_LAUNCH 的前置检查；返回原因列表，空列表才允许 launch。
+
+    教训（2026-11-02）：上一轮崩溃后的残留 VM / 短间隔重复 launch 会触发
+    MuMuNxDevice.exe 0xc0000409（21/22 次进程只活了 2-4 秒）。宁可放弃本次任务，
+    也不要在异常状态下再拉一次实例。
+    """
+    reasons = []
+    if info.get("is_process_started") or info.get("is_android_started"):
+        reasons.append("实例进程仍在运行")
+    if residual_headless_process():
+        reasons.append("存在残留 MuMuVMMHeadless 进程（残留 VM 未清理）")
+    port = info.get("adb_port")
+    if port is None:
+        reasons.append("未能读取实例 adb 端口，无法确认端口占用")
+    elif port_in_use(port):
+        reasons.append(f"adb 端口 {port} 已被占用")
+    return reasons
+
+
+def ensure_android(manager, index, info, allow_start=True):
+    if not info.get("is_process_started") and not info.get("is_android_started"):
+        label = info.get("name") or f"实例 {index}"
+        # 诊断：这条分支就是「卡 60 秒」的源头，把判断依据的原始值和已耗时打出来
+        log(
+            "诊断：实例 %s 判定为未启动 —— is_process_started=%r is_android_started=%r，"
+            "此时已耗时 %.1fs"
+            % (index, info.get("is_process_started"), info.get("is_android_started"), elapsed())
+        )
+        if not allow_start:
+            log(
+                f"MuMu「{label}」(实例 {index}) 未在运行。请先手动打开 MuMu 中的"
+                f"「{label}」实例并等 Android 启动完成，再重新开始任务"
+                f"（自动化默认不替你启动模拟器；如需自动启动请显式设置 AUTO_LAUNCH=1）"
+            )
+            return {}
+        blockers = launch_blockers(index, info)
+        if blockers:
+            log(
+                "未执行 launch：前置检查未通过 —— " + "；".join(blockers)
+                + "（为避免 MuMuNxDevice 崩溃，本次放弃启动，不做重试）"
+            )
+            return {}
+        log(f"正在启动 MuMu 12 实例 {index}（AUTO_LAUNCH=1，仅尝试一次，失败即停）")
+        launch_started = time.monotonic()
+        code, output, error = run(
+            [manager, "control", "--vmindex", index, "launch"], timeout=60
+        )
+        log(
+            "诊断：launch 返回 code=%r，耗时 %.1fs（output=%r error=%r）"
+            % (code, time.monotonic() - launch_started, (output or "")[:200], (error or "")[:200])
+        )
+        if code:
+            log(f"启动 MuMu 失败：{error or output}")
+            return {}
+    else:
+        log(f"MuMu 12 实例 {index} 已在运行，等待 Android 就绪")
+    for _ in range(150):
+        current = manager_info(manager, index)
+        if current.get("is_android_started"):
+            return current
+        # MuMu 12 的 is_android_started 有假阴性（手动打开的实例实测报 false，
+        # 但 player_state=start_finished、ADB shell 可用）；此处不再干等 150 秒，
+        # 交给后面的 ensure_adb 用 ADB 实测确认。
+        if current.get("player_state") == "start_finished":
+            log("is_android_started=false，但 player_state=start_finished，交由 ADB 实测确认")
+            return current
+        time.sleep(1)
+    log("MuMu Android 启动超时")
+    return {}
+
+
+def minimize_mumu(manager, index):
+    """最小化指定 MuMu 实例的主窗口；失败只记录，不中断任务。"""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+
+        user32 = ctypes.windll.user32
+        for _ in range(20):
+            info = manager_info(manager, index)
+            handle_text = str(info.get("main_wnd") or "").strip()
+            try:
+                handle = int(handle_text, 16)
+            except ValueError:
+                handle = 0
+            if handle and user32.IsWindow(handle):
+                if user32.ShowWindowAsync(handle, 6):  # SW_MINIMIZE
+                    log(f"已最小化 MuMu 实例 {index}")
+                    return True
+            time.sleep(0.25)
+    except Exception as exc:
+        log(f"最小化 MuMu 实例 {index} 失败：{exc}")
+        return False
+    log(f"未找到 MuMu 实例 {index} 的可最小化窗口")
+    return False
+
+
+def adb_devices(adb):
+    _, output, _ = run([adb, "devices"], timeout=20)
+    devices = {}
+    for line in output.splitlines():
+        fields = line.split()
+        if len(fields) >= 2 and fields[0] != "List":
+            devices[fields[0]] = fields[1]
+    return devices
+
+
+def adb_state(adb, serial):
+    code, output, _ = run([adb, "-s", serial, "get-state"], timeout=12)
+    return output.strip() if code == 0 else ""
+
+
+def adb_shell_ok(adb, serial):
+    code, output, error = run(
+        [adb, "-s", serial, "shell", "echo", "maa-ok"], timeout=8
+    )
+    return code == 0 and "maa-ok" in f"{output}\n{error}"
+
+
+def instance_serial(info):
+    """MuMuManager info → adb 序列号；读不到端口时返回空串。"""
+    port = info.get("adb_port")
+    if not port:
+        return ""
+    host = str(info.get("adb_host_ip") or "127.0.0.1")
+    return f"{host}:{port}"
+
+
+def index_for_serial(manager, serial):
+    """按 ADB serial 反查 MuMu 实例编号。
+
+    配置里的 extras.mumu.index 不可信：历史上它与实际 AdbSerial 不一致过
+    （serial 是 JCZX 的 16416，index 却还是 AzurLane 的 0），壳存盘时会把
+    错误编号继续传下去。端口只是运行时地址，serial→index 的唯一权威是
+    MuMuManager info；这里只做反查，不推导、不猜。
+    """
+    if not serial:
+        return None
+    for index, info in manager_info_all(manager).items():
+        if instance_serial(info) == serial:
+            return index
+    return None
+
+
+def adb_package_hit(adb, serial):
+    """该实例是否装了目标游戏包。只读查询，不修改设备。"""
+    if not serial:
+        return False
+    if adb_state(adb, serial) != "device":
+        run([adb, "connect", serial], timeout=15)
+        if adb_state(adb, serial) != "device":
+            return False
+    # adb shell 偶发瞬时失败，两次都判不出才算没有。
+    for _ in range(2):
+        code, output, _ = run(
+            [adb, "-s", serial, "shell", "pm", "list", "packages", GAME_PACKAGE],
+            timeout=20,
+        )
+        if code == 0:
+            return any(
+                line.strip() == f"package:{GAME_PACKAGE}"
+                for line in output.splitlines()
+            )
+    return False
+
+
+def adb_android_id(adb, serial):
+    """读取设备的 android_id；取不到返回空串。只读查询。"""
+    code, output, _ = run(
+        [adb, "-s", serial, "shell", "settings", "get", "secure", "android_id"],
+        timeout=12,
+    )
+    return output.strip() if code == 0 else ""
+
+
+class TargetResolutionError(Exception):
+    """无法唯一确定目标设备；调用方必须硬失败，不允许自动挑。"""
+
+
+class NoTarget(TargetResolutionError):
+    """0 台目标设备。"""
+
+
+class AmbiguousTarget(TargetResolutionError):
+    """≥2 台目标设备，身份歧义。"""
+
+
+def resolve_adb_target(adb, preferred_serial=""):
+    """按目标 android_id + 游戏包唯一识别目标设备。
+
+    身份锚点与 binder 完全一致（device_identity.target_android_id()）：先按目标
+    android_id 过滤候选，真机等非目标设备静默滤掉、只在日志留一行摘要；
+    过滤后再去重与歧义判断。0 台、≥2 个不同 id 时抛 TargetResolutionError 的子类；
+    调用方必须硬失败，不允许按 adb 顺序或实例编号自动挑一台。
+    """
+    devices = adb_devices(adb)
+    online = [serial for serial, state in devices.items() if state == "device"]
+    # 非目标设备不逐台打日志，只保留「在线台数」与过滤摘要
+    log(f"[身份] 包名={GAME_PACKAGE}；在线设备 {len(online)} 台")
+    with_game = []
+    for serial in online:
+        if not adb_package_hit(adb, serial):
+            log(f"[身份] 候选 {serial} → 无 {GAME_PACKAGE}，跳过")
+            continue
+        # 非目标设备不逐台打日志：只在下面留一行过滤摘要
+        with_game.append((serial, adb_android_id(adb, serial) or ""))
+
+    target = target_android_id()
+    candidates, dropped = filter_by_target(with_game)
+    if dropped:
+        log(f"[身份] 目标 android_id={target}：过滤掉 {dropped} 台非目标设备（不参与判定）")
+    for serial, aid in candidates:
+        log(f"[身份] 目标设备 {serial} → android_id={aid or '（取不到）'}")
+    if not candidates:
+        log(f"[身份] 目标 android_id={target} 未匹配到设备，停止（不自动挑）")
+        raise NoTarget(f"目标 android_id={target} 未匹配到设备")
+
+    groups: dict[str, list[str]] = {}
+    for serial, aid in candidates:
+        groups.setdefault(aid, []).append(serial)
+    if len(groups) > 1:
+        log(f"[身份] 匹配到 {len(groups)} 台不同 android_id 的设备，身份歧义，停止（不自动挑）：{candidates}")
+        raise AmbiguousTarget(f"{len(groups)} 台")
+    aid, serials = next(iter(groups.items()))
+    serial = pick_entry(serials)
+    if len(serials) > 1:
+        log(f"[身份] android_id={aid} 有 {len(serials)} 个入口 {serials}，视为同一台，选 {serial}")
+    if preferred_serial and serial != preferred_serial:
+        log(
+            f"[身份] 配置 serial={preferred_serial} 与 android_id={aid} "
+            f"对应的 {serial} 不符，按 android_id 纠正"
+        )
+    return serial, aid
+
+
+def describe_instance(index, info, serial=""):
+    """给用户看：实例名 + index + 端口。端口只是运行时地址，不作为判定依据。"""
+    name = str(info.get("name") or "MuMu 实例")
+    address = serial or instance_serial(info) or "端口未知"
+    return f"{name} (index {index}) {address}"
+
+
+def connection_usable(adb, serial, instance):
+    """adb devices 的 device 只代表端口还在握手，不代表 Android 能跑 shell。"""
+    if not serial:
+        return False
+    root, index = device_root_index(instance, adb)
+    manager = (root / "nx_main" / "MuMuManager.exe") if root else None
+    if manager and manager.is_file():
+        actual = index_for_serial(manager, serial)
+        if actual is not None and actual != index:
+            log(f"配置中的实例号 {index} 与 ADB {serial} 不符，按 serial 校正为 {actual}")
+            index = actual
+        info = manager_info(manager, index) if index is not None else {}
+        if info and not info.get("is_android_started"):
+            name = info.get("name") or f"实例 {index}"
+            state = info.get("player_state") or "unknown"
+            # MuMu 12 的 is_android_started 偶发假阴性（player_state=start_finished
+            # 但 ADB shell 实际可用）。不直接判死，交由下面的 ADB 实测决定。
+            log(
+                f"MuMu「{name}」(实例 {index}) is_android_started=false"
+                f"（player_state={state}），交由 ADB 实测判断是否可用"
+            )
+    if adb_state(adb, serial) != "device":
+        return False
+    if not adb_shell_ok(adb, serial):
+        log(f"ADB {serial} 显示 device，但 shell 无响应")
+        return False
+    return True
+
+
+def recover_existing_adb(adb, serial, instance, allow_hard_restart=True):
+    if connection_usable(adb, serial, instance):
+        return True
+    log(f"已保存的 ADB {serial} 不可用，尝试重新连接")
+    if ":" in serial:
+        run([adb, "disconnect", serial], timeout=10)
+        run([adb, "connect", serial], timeout=15)
+    if connection_usable(adb, serial, instance):
+        return True
+
+    devices = adb_devices(adb)
+    other_online = [
+        device for device, state in devices.items() if device != serial and state == "device"
+    ]
+    if not allow_hard_restart or other_online:
+        if other_online:
+            log("检测到其他在线 ADB 设备，跳过全局 ADB Server 重启")
+        return False
+
+    log("普通重连失败，重启 ADB Server 后再试一次")
+    run([adb, "kill-server"], timeout=15)
+    run([adb, "start-server"], timeout=20)
+    if ":" in serial:
+        run([adb, "connect", serial], timeout=15)
+    return connection_usable(adb, serial, instance)
+
+
+def resolve_adb_path(value):
+    """把配置里的 AdbPath 解析成可执行文件。
+
+    指纹形状要求 AdbPath="adb"（依赖 PATH），不能再用 Path("adb").is_file()
+    误判成「没有保存连接」。
+    """
+    text = str(value or "").strip()
+    if text and text.lower() != "adb" and Path(text).is_file():
+        return str(Path(text))
+    # 与 binder 同序：优先 MuMu 自带 adb（MaaToolkit 的 Name 也基于它）。
+    _, _, adb = find_mumu()
+    if adb:
+        return str(adb)
+    found = shutil.which("adb")
+    return found or ""
+
+
+def saved_connection(instance):
+    device = instance.get("AdbDevice", {}) or {}
+    serial = str(device.get("AdbSerial", "")).strip()
+    adb = resolve_adb_path(device.get("AdbPath", ""))
+    if adb and serial:
+        return Path(adb), serial
+    return None
+
+
+def device_root_index(instance, adb):
+    """从已有 AdbDevice.Config / 路径推断 MuMu root 与实例号，供写回 MFA。"""
+    device = instance.get("AdbDevice", {}) or {}
+    index = None
+    root = None
+    try:
+        extras = json.loads(str(device.get("Config") or "{}")).get("extras", {}).get("mumu", {})
+        if extras.get("path"):
+            root = Path(str(extras["path"]))
+        if extras.get("index") is not None and str(extras["index"]).isdigit():
+            index = int(extras["index"])
+    except (TypeError, ValueError, json.JSONDecodeError):
+        pass
+    if root is None or not root.exists():
+        # adb 通常在 <root>/nx_main/adb.exe
+        candidate = Path(adb).resolve().parent.parent
+        if (candidate / "nx_main" / "MuMuManager.exe").is_file():
+            root = candidate
+    if root is None:
+        found, _, _ = find_mumu()
+        root = found
+    return root, index
+
+
+def ensure_adb(adb, info, index):
+    run([adb, "start-server"], timeout=20)
+    host = str(info.get("adb_host_ip") or "127.0.0.1")
+    port = info.get("adb_port")
+    tcp = f"{host}:{port}" if port else ""
+    emulator = f"emulator-{5554 + index * 2}"
+    for _ in range(50):
+        devices = adb_devices(adb)
+        for serial in (tcp, emulator):
+            if serial and devices.get(serial) == "device" and adb_shell_ok(adb, serial):
+                return serial
+        if tcp:
+            if devices.get(tcp) == "offline":
+                run([adb, "disconnect", tcp], timeout=10)
+            run([adb, "connect", tcp], timeout=15)
+        time.sleep(0.5)
+    return ""
+
+
+SCREENCAP_ALL_METHODS = 18446744073709551559  # MFA 基线：所有截图方式都可用
+
+
+def _normalize_screencap(value):
+    """把只启用 EmulatorExtras(64) 的收窄配置归一为全方法位掩码。
+
+    证据（2026-11-03 23:41 maafw.log）：ScreencapMethods=64 时 MaaFramework
+    只试 MuMuPlayerExtras，首次截图失败后连接中断，GUI 却仍报"任务已全部完成"。
+    """
+    try:
+        current = int(value) if value not in (None, "") else SCREENCAP_ALL_METHODS
+    except (TypeError, ValueError):
+        current = SCREENCAP_ALL_METHODS
+    if current == 64:
+        log("ScreencapMethods=64（仅 EmulatorExtras）已归一为全方法，避免截图失败")
+        return SCREENCAP_ALL_METHODS
+    return current or SCREENCAP_ALL_METHODS
+
+
+def update_instance(path, instance, adb, serial, root, index):
+    if not path:
+        log(f"无法写回 MFA：实例配置路径为空（serial={serial}）")
+        return
+    old = instance.get("AdbDevice", {}) or {}
+    adb_text = str(adb).replace("\\", "/")
+    # 与 binder 使用同一指纹形状：Name=serial-adb完整路径、AdbPath=adb、Config={}。
+    # 这样 MatchesFingerprint 的 Name+Address+Port 可稳定 3/3，不依赖实例号。
+    device = {
+        "Name": f"{serial}-{adb_text}",
+        "AdbPath": "adb",
+        "AdbSerial": serial,
+        # 2026-11-03 事故：GUI 把截图方式收窄成 64（仅 EmulatorExtras）后，连接期
+        # 只剩 Extras 可用，首次截图失败直接落到"任务已全部完成"（9 秒假完成）。
+        # 这里把"仅 Extras"归一为全方法位掩码，让连接自动回退到其它截图方式。
+        "ScreencapMethods": _normalize_screencap(old.get("ScreencapMethods")),
+        "InputMethods": int(old.get("InputMethods") or 4),
+        "Config": "{}",
+        "AgentPath": old.get("AgentPath") or "./MaaAgentBinary",
+    }
+    # 不保留过期 InfoHandle，否则 MFA 可能仍按 device=<none> 连接
+    instance["AdbDevice"] = device
+    instance["RememberAdb"] = True
+    instance["UseFingerprintMatching"] = True
+    manager = Path(root) / "nx_main" / "MuMuManager.exe" if root else None
+    if manager and manager.is_file():
+        # 与 MFA「启动设置 > 游戏路径」使用同一套启动入口。这样连接失败时
+        # MFA 可以直接复用本次自动检测到的 MuMu，而不依赖用户手工填写路径。
+        instance["SoftwarePath"] = str(manager.resolve())
+        if index is not None:
+            instance["EmulatorConfig"] = f"control --vmindex {index} launch"
+    elif root is None:
+        log("未定位 MuMu 安装路径，保留 SoftwarePath/EmulatorConfig 原值")
+    save_json(path, instance)
+    log(
+        f"已写入 MFA 连接：{serial}（android_id 身份；"
+        f"指纹形状 Name={device['Name']}, AdbPath=adb, Config={{}}）"
+    )
+    if manager and manager.is_file():
+        log(f"已同步 MFA 游戏路径：{manager.resolve()}")
+
+
+def main():
+    instance_path, instance = selected_instance()
+    if os.name != "nt":
+        log("MuMu 12 自动启动目前仅支持 Windows")
+        return EXIT_FAIL
+
+    settings = runtime_settings(instance)
+    saved = saved_connection(instance)
+    saved_serial = saved[1] if saved else ""
+    adb = str(saved[0]) if saved else resolve_adb_path("")
+    if not adb:
+        _, _, found_adb = find_mumu()
+        adb = str(found_adb) if found_adb else ""
+    if not adb:
+        log("未找到 adb 可执行文件；停止（不自动挑）")
+        return EXIT_FAIL
+    run([adb, "start-server"], timeout=20)
+
+    if saved and not settings["redetect"]:
+        log(f"[1/3] 检查已保存的 ADB 连接：{saved_serial}")
+        if recover_existing_adb(adb, saved_serial, instance):
+            try:
+                serial, aid = resolve_adb_target(adb, saved_serial)
+            except TargetResolutionError as exc:
+                log(f"[身份] 已保存连接无法按 android_id 唯一识别（{exc}），停止（不自动挑）")
+                return EXIT_AMBIGUOUS
+            root, index = device_root_index(instance, adb)
+            manager = Path(root) / "nx_main" / "MuMuManager.exe" if root else None
+            if manager and manager.is_file():
+                actual = index_for_serial(manager, serial)
+                if actual is not None:
+                    index = actual
+                info = manager_info(manager, index) if index is not None else {}
+                log(f"[连接] 已连接 {describe_instance(index, info, serial) if index is not None else serial}")
+            update_instance(instance_path, instance, adb, serial, root, index)
+            log("[2/3] 已保存的 ADB 连接可用，跳过模拟器扫描")
+            log("[3/3] MuMu 与 ADB 已就绪（不开游戏）")
+            return EXIT_OK
+        log("已保存连接不可用，改为按 android_id 识别")
+
+    # 不依赖 MuMuManager 的实例号：直接在 adb 在线设备中按包名 + android_id 唯一识别。
+    log("[1/3] 按 android_id 识别目标设备")
+    try:
+        serial, aid = resolve_adb_target(adb, saved_serial)
+    except AmbiguousTarget:
+        return EXIT_AMBIGUOUS
+    except TargetResolutionError:
+        pass
+    else:
+        root, index = device_root_index(instance, adb)
+        manager = Path(root) / "nx_main" / "MuMuManager.exe" if root else None
+        if manager and manager.is_file():
+            actual = index_for_serial(manager, serial)
+            if actual is not None:
+                index = actual
+            info = manager_info(manager, index) if index is not None else {}
+            log(f"[连接] 已识别 {describe_instance(index, info, serial) if index is not None else serial}")
+        update_instance(instance_path, instance, adb, serial, root, index)
+        log("[2/3] 已按 android_id 识别唯一目标设备")
+        log("[3/3] MuMu 与 ADB 已就绪（不开游戏）")
+        return EXIT_OK
+
+    # 0 台：只有显式允许自动启动且存在明确实例号时，才启动该明确实例一次。
+    # 禁止 range(10) 盲扫，禁止按实例顺序挑第一台。
+    root, manager, _ = find_mumu()
+    if not manager:
+        log("[身份] 0 台目标设备，且未找到 MuMu 12；停止（不自动挑）")
+        return EXIT_AMBIGUOUS
+    _, saved_index = device_root_index(instance, adb)
+    cached_index = load_json(CACHE_FILE).get("vm_index")
+    known_index = settings["vm_index"]
+    if known_index is None:
+        known_index = saved_index if saved_index is not None else cached_index
+    if not settings["auto_start"]:
+        log(
+            "[身份] 0 台目标设备；自动化默认不启动模拟器，停止（不自动挑）。"
+            "请手动打开目标实例后再开始任务，或显式设置 AUTO_LAUNCH=1"
+        )
+        return EXIT_AMBIGUOUS
+    if known_index is None:
+        log("[身份] 0 台目标设备，且没有明确的已知实例号；拒绝盲扫/自动挑，停止")
+        return EXIT_AMBIGUOUS
+    info = manager_info(manager, int(known_index))
+    if not info:
+        log(f"[身份] 明确实例 {known_index} 读取失败；停止（不自动挑）")
+        return EXIT_AMBIGUOUS
+    launched_by_pretask = not info.get("is_process_started") and not info.get("is_android_started")
+    log(f"[2/3] 启动明确实例 {describe_instance(int(known_index), info)}")
+    info = ensure_android(manager, int(known_index), info, allow_start=True)
+    if not info:
+        return EXIT_AMBIGUOUS
+    # 只等待这个「明确实例」的 adb 端口上线，不做任何按顺序挑选。
+    target_serial = ensure_adb(adb, info, int(known_index))
+    if not target_serial:
+        log("[身份] 明确实例启动后 ADB 未就绪，停止（不自动挑）")
+        return EXIT_AMBIGUOUS
+    try:
+        serial, aid = resolve_adb_target(adb, saved_serial)
+    except TargetResolutionError:
+        log("[身份] 启动明确实例后仍无法按 android_id 唯一识别，停止（不自动挑）")
+        return EXIT_AMBIGUOUS
+    save_json(CACHE_FILE, {"root": str(root), "vm_index": int(known_index), "adb_serial": serial})
+    update_instance(instance_path, instance, adb, serial, root, int(known_index))
+    if launched_by_pretask and settings["minimize_after_launch"]:
+        minimize_mumu(manager, int(known_index))
+    log("[3/3] MuMu 与 ADB 已就绪（不开游戏）")
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

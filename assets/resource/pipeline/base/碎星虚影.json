@@ -1,0 +1,179 @@
+{
+    "碎星虚影_记忆门禁": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_gate",
+        "custom_action_param": { "task": "StarShadow", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 3, "refresh_weekday": 0 },
+        "next": ["碎星虚影_入口"],
+        "on_error": ["碎星虚影_记忆跳过"],
+        "next_doc": "链首门禁：StarShadow 每游戏周一次。时间锚=每周一 03:00（11-09 活动探索页倒计时 6天14:11:42 反推），非 7x24 小时。gate 返回 False → 节点失败 → on_error 早退"
+    },
+    "碎星虚影_记忆跳过": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next_doc": "门禁拦截早退终端（无 next）：不写完成记录，日志含拦截原因"
+    },
+    "碎星虚影_入口": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 4,
+        "next": ["碎星虚影_已在活动探索页", "首页_出击", "碎星虚影_回主页", "[JumpBack]子任务_进入首页", "碎星虚影_入口"],
+        "next_doc": "入口自足：已在活动探索页直接进判据；在大厅点出击；其它二级页先点 HomeButton 回大厅再重排。最多 4 次"
+    },
+    "碎星虚影_已在活动探索页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [560, 70, 240, 50],
+                "expected": ["活动探索"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["碎星虚影_判据"],
+        "next_doc": "活动探索页标题 y≈84~103（出击页入口在 y≈154，靠 roi 区分）。已在页内则跳过出击导航"
+    },
+    "碎星虚影_回主页": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [164, 21, 112, 51],
+                "template": "返回主页.png"
+            }
+        },
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "pre_delay": 1500,
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1500,
+        "next": ["碎星虚影_入口"],
+        "next_doc": "任意二级页左上 HomeButton（同 通用-返回主页 模板），点完回入口重排"
+    },
+    "碎星虚影_活动探索入口": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [540, 98, 215, 95],
+                "expected": ["活动探索"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": ["碎星虚影_判据"],
+        "next_doc": "出击选择页的「活动探索」入口（今日实测点 (657,154) 可进）"
+    },
+    "碎星虚影_判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["碎星虚影_进页弹窗", "碎星虚影_卡片", "碎星虚影_列表无卡片"],
+        "next_doc": "三态分流（同一帧并发识别，按顺序取先命中）：进页弹窗=有可领；卡片=先点再判；其它活动卡=已领完。不走 on_error，避免父节点反复重扫"
+    },
+    "碎星虚影_进页弹窗": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [400, 130, 480, 140],
+                "expected": ["获得物品"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [640, 537, 2, 2]
+            }
+        },
+        "post_delay": 1500,
+        "next": ["碎星虚影_记忆完成"],
+        "next_doc": "11-05 记录过「进活动探索即自动弹获得物品」；命中即本周报酬已入账，点空白关闭并记完成"
+    },
+    "碎星虚影_卡片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [490, 175, 780, 420],
+                "expected": ["碎星虚影", "碎星虛影"],
+                "threshold": 0.2
+            }
+        },
+        "pre_wait_freezes": { "time": 800, "threshold": 0.95 },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": ["碎星虚影_已点卡片判定"],
+        "next_doc": "活动探索页首屏卡片带（11-09 槽 1 x≈510~771 / y≈181~581；11-05 首屏 4 卡，故 ROI 覆盖整条首屏）。点卡片文字中心"
+    },
+    "碎星虚影_已点卡片判定": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["碎星虚影_获得物品", "碎星虚影_进入挑战页", "碎星虚影_无进度退出"],
+        "next_doc": "点卡片后的三种落点：① 获得物品弹窗=有可领；② BOSS 选择页=没进度；③ 其它/无反应=没进度"
+    },
+    "碎星虚影_获得物品": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [400, 130, 480, 140],
+                "expected": ["获得物品"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [640, 537, 2, 2]
+            }
+        },
+        "post_delay": 1500,
+        "next": ["碎星虚影_记忆完成"],
+        "next_doc": "「有可领」唯一成功证据：弹窗标题「获得物品」。点空白关闭"
+    },
+    "碎星虚影_记忆完成": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_complete",
+        "custom_action_param": { "task": "StarShadow", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 3, "refresh_weekday": 0 },
+        "next": ["通用-返回主页"],
+        "next_doc": "只在两种已证明的出口后写完成：① 出现并关闭「获得物品」弹窗（有可领）；② 列表有其它活动卡但无碎星虚影（本周已领完）"
+    },
+    "碎星虚影_进入挑战页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [30, 170, 760, 500],
+                "expected": ["戈里刻虚影", "尼克罗虚影", "诺斯虚影"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["碎星虚影_无进度退出"],
+        "next_doc": "点卡片没弹奖励而是进了 BOSS 选择页 = 本周无可领（没进度），不写完成记录"
+    },
+    "碎星虚影_列表无卡片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [430, 175, 830, 420],
+                "expected": ["永境战域", "阀限禁区", "冥世试炼", "异态侵蚀"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["碎星虚影_记忆完成"],
+        "next_doc": "「已领完」判据：活动探索页有其它活动卡（锚点），但全首屏没有碎星虚影。11-09 领完后重进页面实测卡片消失"
+    },
+    "碎星虚影_无进度退出": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 3,
+        "next": ["通用-返回主页", "[JumpBack]子任务_点击返回", "碎星虚影_无进度退出"],
+        "next_doc": "兜底退出：能直接回主页就回；在 BOSS 选择页先按返回再回主页。最多 3 轮。此路不写完成记录"
+    }
+}

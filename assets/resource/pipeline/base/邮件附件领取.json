@@ -1,0 +1,168 @@
+{
+  "邮件附件领取": {
+    "next": [
+      "[JumpBack]子任务_点击取消",
+      "[JumpBack]子任务_关闭公告",
+      "[JumpBack]子任务_关闭周年公告",
+      "[JumpBack]子任务_关闭促销弹窗",
+      "邮件领取_门禁",
+      "邮件领取_锚点检查",
+      "[JumpBack]子任务_进入首页"
+    ],
+    "timeout": 300000,
+    "on_error": [
+      "邮件领取_失败"
+    ],
+    "next_doc": "独立邮件附件领取任务：主界面 -> 邮件 -> mail_claim（三重判据）-> 回主界面。与「领取奖励」解耦，避免被 DailyRewards 的每日任务记忆拦截，便于单独执行与验证。"
+  },
+
+  "邮件领取_门禁": {
+    "recognition": {
+      "type": "DirectHit"
+    },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "mail_claim_gate",
+        "custom_action_param": {}
+      }
+    },
+    "on_error": [
+      "邮件领取_失败"
+    ],
+    "next": [
+      "邮件领取_锚点检查"
+    ],
+    "next_doc": "进邮箱之前做幂等判定：需要跳过时由 mail_claim_gate 把 next 覆盖为「邮件领取_跳过」正常收尾；on_error 只留给后续节点识别超时等真实故障。2026-11-10 假成功：锚点检查 20.5s 超时被记到本节点，on_error 走跳过终端，0 封也报成功"
+  },
+
+  "邮件领取_跳过": {
+    "recognition": {
+      "type": "DirectHit"
+    },
+    "action": {
+      "type": "DoNothing"
+    },
+    "next_doc": "幂等跳过终端（无 next）：不重复进入邮箱，正常结束"
+  },
+
+  "邮件领取_锚点检查": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "expected": ["补给站"],
+        "roi": [934, 582, 176, 127],
+        "threshold": 0.2
+      }
+    },
+    "pre_wait_freezes": {
+      "time": 1000,
+      "threshold": 0.95
+    },
+    "timeout": 15000,
+    "anchor": "主界面",
+    "action": {
+      "type": "DoNothing"
+    },
+    "next": [
+      "邮件领取_进邮件"
+    ],
+    "on_error": [
+      "[JumpBack]子任务_进入首页"
+    ],
+    "next_doc": "只在主界面设置锚点后进邮件，避免盲点"
+  },
+
+  "邮件领取_进邮件": {
+    "recognition": {
+      "type": "TemplateMatch",
+      "param": {
+        "template": "Infrastructures/mail.png",
+        "roi": [1025, 15, 120, 50],
+        "threshold": 0.7
+      }
+    },
+    "action": {
+      "type": "Click"
+    },
+    "pre_wait_freezes": {
+      "time": 1000,
+      "threshold": 0.95
+    },
+    "timeout": 10000,
+    "post_delay": 2500,
+    "next": [
+      "邮件领取_执行"
+    ],
+    "on_error": [
+      "[JumpBack]子任务_进入首页"
+    ],
+    "next_doc": "直接点击模板命中的信封图标中心（不再用锚点偏移，避免点偏）"
+  },
+
+  "邮件领取_执行": {
+    "recognition": {
+      "type": "DirectHit"
+    },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "mail_claim",
+        "custom_action_param": {
+          "max_claims": 20,
+          "max_scrolls": 6
+        }
+      }
+    },
+    "timeout": 300000,
+    "on_error": [
+      "邮件领取_失败"
+    ],
+    "next": [
+      "邮件领取_完成"
+    ],
+    "next_doc": "一键优先、逐封兜底；每封三重校验（计数-1 + 按钮变删除 + 底部已领取）；无附件邮件跳过；失败不假成功"
+  },
+
+  "邮件领取_失败": {
+    "recognition": {
+      "type": "DirectHit"
+    },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "mail_claim",
+        "custom_action_param": {
+          "abort": true
+        }
+      }
+    },
+    "next": [
+      "邮件领取_失败提示"
+    ],
+    "next_doc": "失败先清理幂等标记/锁，避免把一次导航失败记成 5 分钟内已执行"
+  },
+
+  "邮件领取_失败提示": {
+    "recognition": {
+      "type": "DirectHit"
+    },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "task_fail",
+        "custom_action_param": {
+          "reason": "邮件附件领取失败：待领取未清零，或三重校验（计数/按钮/底部）不成立",
+          "cleanup_entry": "通用_回主界面并结束"
+        }
+      }
+    },
+    "next": []
+  },
+
+  "邮件领取_完成": {
+    "next": [
+      "通用_回主界面并结束"
+    ]
+  }
+}

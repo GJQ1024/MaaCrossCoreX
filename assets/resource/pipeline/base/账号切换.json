@@ -1,0 +1,20 @@
+{
+    "账号切换_编排": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "account_switch",
+        "custom_action_param": {
+            "count": 0,
+            "pick_1": false,
+            "pick_2": false,
+            "pick_3": false,
+            "pick_4": false,
+            "pick_5": false,
+            "pick_6": false,
+            "pick_7": false,
+            "pick_8": false
+        },
+        "next": [],
+        "next_doc": "默认 count=0 且未勾选账号：agent 侧直接返回成功、不触碰设备（保持「不自动切号」现状）。面板选择数量或勾选账号后，agent 调 scripts/account_switch.py 顺序切号，失败即停。"
+    }
+}

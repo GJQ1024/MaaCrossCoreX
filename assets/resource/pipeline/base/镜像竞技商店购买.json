@@ -1,0 +1,120 @@
+{
+  "镜像竞技商店购买": {
+    "next": [
+      "镜像_唤醒",
+      "[JumpBack]子任务_进入首页"
+    ]
+  },
+  "镜像_唤醒": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [880, 250, 1, 1]
+    },
+    "max_hit": 1,
+    "post_delay": 1200,
+    "next": ["镜像_出击", "[JumpBack]子任务_进入首页"]
+  },
+  "镜像_出击": {
+    "recognition": {
+      "type": "TemplateMatch",
+      "param": {
+        "roi": [1094, 539, 176, 175],
+        "template": ["StartUp/chuji.png"]
+      }
+    },
+    "action": { "type": "Click" },
+    "post_delay": 2000,
+    "next": ["镜像_模拟军演", "镜像_翻页"]
+  },
+  "镜像_模拟军演": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [20, 20, 1240, 640],
+        "expected": ["模拟军演"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "post_delay": 2000,
+    "next": ["镜像_点镜像竞技", "镜像_翻页"]
+  },
+  "镜像_翻页": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [1203, 675, 1, 1]
+    },
+    "max_hit": 3,
+    "post_delay": 1200,
+    "next": ["镜像_模拟军演", "镜像_出击"]
+  },
+  "镜像_点镜像竞技": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [505, 432, 1, 1]
+    },
+    "post_delay": 2500,
+    "next": ["镜像_点商店兑换", "镜像_点镜像竞技"]
+  },
+  "镜像_点商店兑换": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [180, 615, 200, 75],
+        "expected": ["商店兑换"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "max_hit": 3,
+    "post_delay": 2000,
+    "next": ["镜像_就绪", "镜像_点商店兑换"]
+  },
+  "镜像_就绪": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [80, 110, 90, 50],
+        "expected": ["演习"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "DoNothing" },
+    "next": ["镜像_购买"]
+  },
+  "镜像_购买": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "store_purchase",
+        "custom_action_param": {
+          "store_key": "mirror_shop",
+          "max_items": 20
+        }
+      }
+    },
+    "on_error": ["镜像_失败"],
+    "next": ["镜像_完成"]
+  },
+  "镜像_失败": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "task_fail",
+        "custom_action_param": {
+          "reason": "镜像竞技商店兑换失败：购买未完成或买后余额差值与价格不符",
+          "cleanup_entry": "通用_回主界面并结束"
+        }
+      }
+    },
+    "next": []
+  },
+  "镜像_完成": {
+    "next": ["通用_回主界面并结束"]
+  }
+}

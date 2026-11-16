@@ -1,0 +1,1332 @@
+{
+    "通用_OCR探针": {
+        "recognition": "OCR",
+        "roi": [0, 0, 1280, 720],
+        "expected": [],
+        "action": "DoNothing",
+        "next_doc": "仅供 cost_guard 自定义动作通过 pipeline_override 复用，业务节点不引用"
+    },
+    "$__mpe_config_通用": {
+        "$__mpe_code": {
+            "prefix": "",
+            "coordinateMode": "absolute-v1",
+            "lastSyncTime": 1788608618093,
+            "isModifiedExternally": false,
+            "isDeleted": false,
+            "filePath": "C:\\Users\\thomas\\Desktop\\成品攀比\\MAAlocalhost\\resource\\pipeline\\base\\通用.json",
+            "savedViewport": {
+                "x": -274,
+                "y": -1394,
+                "zoom": 0.8
+            },
+            "filename": "通用",
+            "version": "v1.9.3"
+        }
+    },
+    "$__mpe_external_NERI_通用": {
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 708
+            }
+        }
+    },
+    "$__mpe_external_启动角色界面_通用": {
+        "$__mpe_code": {
+            "position": {
+                "x": 13,
+                "y": -3
+            }
+        }
+    },
+    "$__mpe_external_开始游戏_通用": {
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 988
+            }
+        }
+    },
+    "$__mpe_external_签到_通用": {
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 848
+            }
+        }
+    },
+    "$__mpe_external_首页标志1_通用": {
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 1430
+            }
+        }
+    },
+    "$__mpe_external_首页标志2_通用": {
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 2689
+            }
+        }
+    },
+    "好友": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "好友"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "$__mpe_code": {
+            "position": {
+                "x": 470,
+                "y": 1245
+            }
+        }
+    },
+    "子任务_关闭公告": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    900,
+                    55,
+                    362,
+                    200
+                ],
+                "template": "StartUp/CloseAnnouncement.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 2388
+            }
+        }
+    },
+    "子任务_关闭周年公告": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    900,
+                    55,
+                    362,
+                    200
+                ],
+                "template": "StartUp/ZNGG.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 732,
+                "y": 12
+            }
+        }
+    },
+    "子任务_点击取消": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    330,
+                    346,
+                    313,
+                    150
+                ],
+                "expected": [
+                    "取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 2134
+            }
+        }
+    },
+    "子任务_点击确认": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    665,
+                    364,
+                    331,
+                    152
+                ],
+                "expected": [
+                    "确认"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "max_hit": 5,
+        "next_doc": "2026-11-02 假成功整治：断网时「网络不稳定」对话框点确认会反复重弹，无界则死循环永不判失败；全库仅启动/回首页链路引用本节点，max_hit=5 封顶（合法确认框点一次即消失）",
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 1570
+            }
+        }
+    },
+    "子任务_点击同意": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    480,
+                    490,
+                    500,
+                    130
+                ],
+                "expected": [
+                    "同意"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next_doc": "B服首次启动的 bilibili 隐私政策提示（拒绝/同意），实机 2026-11-01 发现；迁移自 crosscore-auto 验证链路"
+    },
+    "子任务_关闭促销弹窗": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    900,
+                    55,
+                    362,
+                    200
+                ],
+                "template": "StartUp/ClosePromo.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next_doc": "月卡/礼包促销弹窗（星贸凭证等）右上 X；模板自截于 3.3.1 实机 2026-11-01；迁移自 crosscore-auto 验证链路"
+    },
+    "子任务_点击返回": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    14,
+                    10,
+                    126,
+                    72
+                ],
+                "template": "StartUp/BackButton.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 1128
+            }
+        }
+    },
+    "子任务_点击首页按钮": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    180,
+                    10,
+                    100,
+                    70
+                ],
+                "template": [
+                    "StartUp/HomeButton.png",
+                    "StartUp/HomeButton1.png"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 5000,
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 346
+            }
+        }
+    },
+    "子任务_获得物品": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    447,
+                    117,
+                    405,
+                    117
+                ],
+                "expected": [
+                    "获得物品",
+                    "合成成功"
+                ]
+            }
+        },
+        "pre_delay": 300,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "item_popup"
+                }
+            }
+        },
+        "post_delay": 300,
+        "next_doc": "2026-11-09 保留节点名与 OCR 语义（46 处引用零改动），动作改为 ui_mask_close(item_popup)：点空白 (640,537) 并复核标题消失，重试 2 次；快照与参数见 ui_common.MASK_SPECS。",
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 1824
+            }
+        }
+    },
+    "子任务_关闭个人面板": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    820,
+                    100,
+                    440,
+                    520
+                ],
+                "expected": [
+                    "成就",
+                    "档案"
+                ]
+            }
+        },
+        "pre_delay": 300,
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    -707,
+                    70,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": [
+            "子任务_进入首页"
+        ]
+    },
+    "子任务_进入个人配置": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    1204,
+                    25,
+                    35,
+                    35
+                ],
+                "template": [
+                    "StartUp/菜单多.png"
+                ]
+            }
+        },
+        "pre_delay": 1000,
+        "action": {
+            "type": "Click"
+        },
+        "next": [
+            "好友"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 169,
+                "y": 1196
+            }
+        }
+    },
+    "子任务_进入首页": {
+        "next": [
+            "首页标志2",
+            "[JumpBack]通用-断线恢复",
+            "[JumpBack]通用-遮罩处理",
+            "[JumpBack]通用-二次确认_取消",
+            "[JumpBack]通用-返回",
+            "[JumpBack]启动_唤醒待机页面",
+            "[JumpBack]子任务_关闭个人面板",
+            "[JumpBack]子任务_点击首页按钮",
+            "[JumpBack]子任务_点击返回",
+            "[JumpBack]子任务_获得物品",
+            "[JumpBack]子任务_点击取消",
+            "[JumpBack]子任务_点击确认",
+            "[JumpBack]子任务_点击同意",
+            "[JumpBack]子任务_关闭促销弹窗",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "签到",
+            "首页标志1",
+            "开始游戏",
+            "启动角色界面"
+        ],
+        "next_doc": "2026-11-09 generic 优先、旧专用节点退为兜底：断线恢复 → 通用遮罩 → 二次确认取消 → 通用返回 → 唤醒待机 → 旧专用（关闭个人面板/点击首页按钮/点击返回/获得物品/点击取消/点击确认/点击同意/关闭促销/关闭公告/关闭周年公告）→ 签到 → 首页标志1 → 开始游戏 → 启动角色界面",
+        "$__mpe_code": {
+            "position": {
+                "x": 892,
+                "y": 1345
+            }
+        }
+    },
+    "通用-断线恢复": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    0,
+                    0,
+                    1280,
+                    720
+                ],
+                "expected": [
+                    "网络不稳定",
+                    "连接服务器失败",
+                    "即将返回登录界面",
+                    "开始游戏"
+                ],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "max_hit": 5,
+        "timeout": 3000,
+        "next": [
+            "通用-断线_网络不稳定",
+            "通用-断线_连接失败",
+            "通用-登录页检查"
+        ],
+        "next_doc": "2026-11-09 #1 断线重连与登录恢复闸门。必须做识别闸门：原 DirectHit 恒命中，作为 [JumpBack] 目标时回跳后父节点重扫又命中自己，16:25 实跑确认会无限重入 子任务_进入首页。全屏 OCR 联合四种断线/登录文案（阈值 0.2），命中才进分流；max_hit 5 封顶。"
+    },
+    "通用-断线_留帧": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_snapshot",
+                "custom_action_param": {
+                    "label": "disconnect_fail",
+                    "reason": "断线遮罩无法关闭，留帧后判失败"
+                }
+            }
+        },
+        "next": [
+            "通用-断线_报错"
+        ],
+        "next_doc": "关不掉断线遮罩时先留证据帧，再明确失败，不静默卡住。"
+    },
+    "通用-断线_报错": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "task_fail",
+                "custom_action_param": {
+                    "reason": "断线/登录恢复失败，已留帧",
+                    "cleanup_entry": "通用_回主界面并结束"
+                }
+            }
+        },
+        "next_doc": "已留帧的明确失败终端；不点取消、不盲点。"
+    },
+    "通用-断线_网络不稳定": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    480,
+                    311,
+                    312,
+                    39
+                ],
+                "expected": [
+                    "网络不稳定"
+                ]
+            }
+        },
+        "timeout": 2000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "network_unstable"
+                }
+            }
+        },
+        "next": [
+            "通用-断线恢复"
+        ],
+        "on_error": [
+            "通用-断线_留帧"
+        ],
+        "next_doc": "点「确定」：点击点用 MASK_SPECS.network_unstable 的 target_offset [166,118]（相对 OCR 框，沿用重连网络.json 实测口径），不写绝对坐标；点后复核「网络不稳定」消失。关不掉 → 留帧 + task_fail。"
+    },
+    "通用-断线_连接失败": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    300,
+                    180,
+                    680,
+                    360
+                ],
+                "expected": [
+                    "连接服务器失败",
+                    "即将返回登录界面"
+                ]
+            }
+        },
+        "timeout": 2000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_snapshot",
+                "custom_action_param": {
+                    "label": "conn_lost",
+                    "reason": "连接服务器失败，返回登录页后点开始游戏"
+                }
+            }
+        },
+        "next": [
+            "通用-登录恢复"
+        ],
+        "next_doc": "严禁点「取消」（实测取消无效并被踢回登录页）；只留帧，等登录页出现后由 通用-登录恢复 点「开始游戏」。"
+    },
+    "通用-登录页检查": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    580,
+                    462,
+                    121,
+                    40
+                ],
+                "expected": [
+                    "开始游戏"
+                ]
+            }
+        },
+        "timeout": 1500,
+        "action": "DoNothing",
+        "next": [
+            "通用-登录恢复"
+        ],
+        "next_doc": "登录页判定：ROI 与文本沿用 启动游戏.json「开始游戏」节点；命中即交给 通用-登录恢复。"
+    },
+    "通用-登录恢复": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    580,
+                    462,
+                    121,
+                    40
+                ],
+                "expected": [
+                    "开始游戏"
+                ]
+            }
+        },
+        "timeout": 60000,
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 3000,
+        "max_hit": 3,
+        "next_doc": "复用 启动游戏.json「开始游戏」的 ROI [580,462,121,40] 与识别语义；超时放宽到 60s 覆盖登录页加载。点后回首页链（JumpBack 自然续跑），不写 next 以免打断子任务_进入首页 的顺序。max_hit=3 封顶：点不进去时不无限重试，由外层链继续直到判失败。"
+    },
+    "通用-左滑一屏": {
+        "recognition": "DirectHit",
+        "timeout": 5000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_swipe",
+                "custom_action_param": {
+                    "preset": "slow_left"
+                }
+            }
+        },
+        "max_hit": 3,
+        "next_doc": "2026-11-09 #3 活动卡慢速大幅左滑：坐标/时长只在 ui_common.SWIPE_PRESETS.slow_left（1100,430→200,435、900ms），JSON 不写坐标。"
+    },
+    "通用-滚动回顶": {
+        "recognition": "DirectHit",
+        "timeout": 30000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_swipe",
+                "custom_action_param": {
+                    "preset": "scroll_top"
+                }
+            }
+        },
+        "max_hit": 3,
+        "next_doc": "2026-11-09 #3 右边缘 x=1100 向下→上滚动回顶：参数只在 ui_common.SWIPE_PRESETS.scroll_top，连续两帧稳定即停。"
+    },
+    "通用-按钮判态_扫荡灰": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "ui_button_state",
+                "custom_recognition_param": {
+                    "preset": "doomsday_sweep_gray",
+                    "roi": [
+                        940,
+                        585,
+                        280,
+                        40
+                    ],
+                    "mode": "bright",
+                    "want": "disabled"
+                }
+            }
+        },
+        "timeout": 3000,
+        "action": "DoNothing",
+        "next_doc": "2026-11-09 #4 统一可点/灰态判定的可复用示例：命中=灰态（不可点）。仅作示例，不挂进 子任务_进入首页；任务按需显式引用。亮度阈值来自 ui_mask.SWEEP_ENABLED_BRIGHT=140，不得下调。"
+    },
+    "通用-二次确认_取消": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "ui_confirm_guard",
+                "custom_recognition_param": {}
+            }
+        },
+        "timeout": 2000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_confirm_cancel",
+                "custom_action_param": {}
+            }
+        },
+        "max_hit": 3,
+        "next_doc": "2026-11-09 #5 白名单外的二次确认框一律点「取消」并复核对话框消失；白名单（网络/宿舍/撤退/扫荡次数/购买/兑换/使用/战术重置/赠送）由各专用流程处理，generic 不代点。"
+    },
+    "通用-资源足够": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "resource_gate",
+                "custom_recognition_param": {
+                    "preset": "stamina",
+                    "need": 1
+                }
+            }
+        },
+        "timeout": 3000,
+        "action": "DoNothing",
+        "next_doc": "2026-11-09 #6 体力/次数闸的示例节点（供任务显式调用）：OCR ui_common.RESOURCE_ROIS[preset] 后 parse_count 取 cur/max，cur >= need 才命中。任务引用时只改 preset/need，不写 OCR/正则。"
+    },
+    "通用-资源不足_跳过": {
+        "recognition": "DirectHit",
+        "timeout": 2000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "task_skip",
+                "custom_action_param": {
+                    "preset": "stamina",
+                    "reason": "体力/次数不足，跳过并记录；不购买、不兑换"
+                }
+            }
+        },
+        "next_doc": "2026-11-09 #6 资源不足时终端跳过：只写 WARNING + 事件日志，绝不买体力/买次数/兑换。"
+    },
+    "通用-遮罩处理": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "ui_mask_probe",
+                "custom_recognition_param": {
+                    "preset": "any"
+                }
+            }
+        },
+        "max_hit": 10,
+        "timeout": 2000,
+        "action": "DoNothing",
+        "next": [
+            "通用-遮罩_获得物品",
+            "通用-遮罩_芯片仓库上限",
+            "通用-遮罩_战斗结算",
+            "通用-遮罩_公告",
+            "通用-遮罩_周年公告",
+            "通用-遮罩_促销礼包"
+        ],
+        "next_doc": "2026-11-09 通用遮罩分流器（识别闸门）。必须做识别：原 DirectHit 恒命中，作为 [JumpBack] 目标时回跳后父节点重扫又命中自己，16:25 实跑确认会无限重入 子任务_进入首页。闸门 preset=any 按 ui_common.MASK_ANY_ORDER 逐种探测，无遮罩时不命中、正常交给父链下一个候选。命中后由对应子节点 ui_mask_close 关闭并复核；关不掉走该子节点 on_error → 留帧 → task_fail。被 子任务_进入首页 的 JumpBack 链引用（在 通用-断线恢复 之后）。"
+    },
+    "通用-遮罩_获得物品": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    447,
+                    117,
+                    405,
+                    117
+                ],
+                "expected": [
+                    "获得物品",
+                    "合成成功"
+                ]
+            }
+        },
+        "timeout": 1000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "item_popup"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩处理"
+        ],
+        "on_error": [
+            "通用-遮罩_留帧"
+        ],
+        "next_doc": "底部提示「点击空白处继续」：点 (640,537) 空白（ui_common.MASK_SPECS.item_popup），关闭后复 OCR，未消失重试 2 次。"
+    },
+    "通用-遮罩_战斗结算": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    0,
+                    20,
+                    760,
+                    240
+                ],
+                "expected": [
+                    "战斗结束",
+                    "战斗胜利",
+                    "战斗失败",
+                    "扫荡成功"
+                ]
+            }
+        },
+        "timeout": 1000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "battle_result"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩处理"
+        ],
+        "on_error": [
+            "通用-遮罩_留帧"
+        ],
+        "next_doc": "实测 2026-11-09：右上 (1010,120) 连点无效，中央 (640,400) 一次离页；角斗场白色 ▶ 是装饰，不点。"
+    },
+    "通用-遮罩_公告": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    900,
+                    55,
+                    362,
+                    200
+                ],
+                "template": "StartUp/CloseAnnouncement.png"
+            }
+        },
+        "timeout": 1000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "announcement"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩处理"
+        ],
+        "on_error": [
+            "通用-遮罩_留帧"
+        ],
+        "next_doc": "只点右上 X；公告内「点击跳转」属黑名单，禁止点。"
+    },
+    "通用-遮罩_周年公告": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    900,
+                    55,
+                    362,
+                    200
+                ],
+                "template": "StartUp/ZNGG.png"
+            }
+        },
+        "timeout": 1000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "anniversary"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩处理"
+        ],
+        "on_error": [
+            "通用-遮罩_留帧"
+        ],
+        "next_doc": "只点右上 X。"
+    },
+    "通用-遮罩_促销礼包": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    900,
+                    55,
+                    362,
+                    200
+                ],
+                "template": "StartUp/ClosePromo.png"
+            }
+        },
+        "timeout": 1000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "promo"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩处理"
+        ],
+        "on_error": [
+            "通用-遮罩_留帧"
+        ],
+        "next_doc": "月卡/礼包/折扣包：只关右上 X，不勾选、不点购买。"
+    },
+    "通用-遮罩_芯片仓库上限": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    250,
+                    160,
+                    780,
+                    400
+                ],
+                "expected": [
+                    "芯片仓库已达上限"
+                ]
+            }
+        },
+        "timeout": 1000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": {
+                    "preset": "chip_warehouse_full"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩处理"
+        ],
+        "on_error": [
+            "通用-遮罩_留帧"
+        ],
+        "next_doc": "2026-11-09 阀限禁区战斗结算实测：纯提示「芯片仓库已达上限…确定」，无取消按钮。按正文关键词识别（不用泛化的「提示/确定」），关闭点由 confirm 区 OCR 定位黄色「确定」按钮，不写死坐标；点后复核正文消失。只确认、不清理、不销毁芯片；必须排在 战斗结算 之前，否则会被 battle_result 的中央点击抢先。"
+    },
+    "通用-遮罩_留帧": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_snapshot",
+                "custom_action_param": {
+                    "label": "mask_fail",
+                    "reason": "遮罩无法关闭"
+                }
+            }
+        },
+        "next": [
+            "通用-遮罩_报错"
+        ],
+        "next_doc": "留帧到 logs/mask_fail/ 并写事件；真正判失败由 通用-遮罩_报错 完成。"
+    },
+    "通用-遮罩_报错": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "task_fail",
+                "custom_action_param": {
+                    "reason": "通用遮罩无法关闭，已留帧",
+                    "cleanup_entry": "通用_回主界面并结束"
+                }
+            }
+        },
+        "next_doc": "已知遮罩都关不掉时明确失败收尾（不盲点未知遮挡），收尾链会再走一次 通用-遮罩处理。"
+    },
+    "通用_确认主界面": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    934,
+                    582,
+                    176,
+                    127
+                ],
+                "expected": [
+                    "补给站"
+                ]
+            }
+        },
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": {
+            "type": "DoNothing"
+        },
+        "next_doc": "迁移新增：确认在主界面并设置锚点「主界面」"
+    },
+    "通用_回主界面并结束": {
+        "next": [
+            "通用_确认主界面",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 60000,
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "迁移新增：任务收尾，确保回到主界面（各任务结束段共用）"
+    },
+    "战斗_启用二倍速": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    973,
+                    30,
+                    95,
+                    57
+                ],
+                "template": "Combat/Combat_Doublespeed.png",
+                "threshold": 0.88
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "next_doc": "迁移改造：点击识别框中心，替代上游绝对坐标 target [1012,52,10,10]（位置等价）。**2026-11-04 离线体检改阈值 0.90→0.88**：1581 帧实测正例最高 0.9638（battle_shots/029）、最低 0.8303（T7_13_card_B），负例最高 0.7495（_wrong_instance_azurlane/04_quit_try2），类间距仅 0.0808 < 0.10，**任何单阈值都无法同时给两端 ≥0.05 余量**。按 §14「假阴性优先」保留偏高的 0.88（漏点只是动画慢，不致命；误点才可能点到 HUD 其它控件），未降到中点 0.79。仍属 P0，需重裁模板或加 ROI 形状约束",
+        "$__mpe_code": {
+            "position": {
+                "x": 1452,
+                "y": 12
+            }
+        }
+    },
+    "战斗_自动战斗": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    1069,
+                    27,
+                    105,
+                    59
+                ],
+                "template": "Combat/Combat_Auto.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "next_doc": "【禁止用于战斗链路】本节点只做「看到开关图标就点」，不判开/关态：开关已开时再点会把它关掉（P-017 / 项目规范 §12）。战斗链路请引用 `战斗_确认自动战斗`（三段式纠正闸）。仅保留作历史参照。",
+        "$__mpe_code": {
+            "position": {
+                "x": 492,
+                "y": 12
+            }
+        }
+    },
+    "战斗_确认自动战斗": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "combat_auto_state",
+                "custom_recognition_param": {
+                    "expected": "on"
+                }
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 70000,
+        "next_doc": "战斗链路前置（2026-11-03 定稿，三段式）：①已开：ROI [1096,34,78,46] 颜色+形状双重校验连续 2 帧（琥珀像素 120–1000；最大连通块 60–130 px；两枚等大箭头联合外框 17–28 × 18–27、宽高比 0.77–1.26、填充率 0.26–0.42）-> 直接放行、不点击；②关态：AutoOff 模板 >=0.9 连续 2 帧命中 -> 点击 -> 0.9s -> 连续 2 帧复核，仍关再点一次（最多 2 次）；③识别不到（演出中/HUD 未出）：不判失败，预算 65s 内继续等待，HUD 出现即回到①②，仅预算耗尽才失败。旧 AutoOn 模板 0.802 对阈值 0.8（余量 0.002）已废弃；形状判据挡掉计数区间内的金色横幅（774 像素/最大块 528/填充率 0.579）。可被每日探索扫荡、活动关等战斗链路复用（引用本节点后再接各自的结算等待）。",
+        "$__mpe_code": {
+            "position": {
+                "x": 492,
+                "y": -140
+            }
+        }
+    },
+    "活动探索-右滑": {
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    1116,
+                    376,
+                    37,
+                    47
+                ],
+                "end": [
+                    [
+                        858,
+                        379,
+                        49,
+                        44
+                    ]
+                ],
+                "duration": 1000
+            }
+        },
+        "post_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 652,
+                "y": 656
+            }
+        }
+    },
+    "活动探索-首页-出击": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    1085,
+                    557,
+                    194,
+                    152
+                ],
+                "template": "StartUp/chuji.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_wait_freezes": 200,
+        "next": [
+            "进入活动探索界面"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 12,
+                "y": 351
+            }
+        }
+    },
+    "活动选择": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    91,
+                    173,
+                    1139,
+                    422
+                ],
+                "expected": "活动选择"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 652,
+                "y": 346
+            }
+        }
+    },
+    "跳过首领演出动画": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    1067,
+                    10,
+                    187,
+                    90
+                ],
+                "template": "weekly_skip_720.png",
+                "threshold": 0.52
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 500,
+        "$__mpe_code": {
+            "position": {
+                "x": 252,
+                "y": 12
+            }
+        }
+    },
+    "跳过首领演出动画_OCR": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    1119,
+                    30,
+                    87,
+                    44
+                ],
+                "expected": "跳过"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 500,
+        "$__mpe_code": {
+            "position": {
+                "x": 252,
+                "y": 92
+            }
+        }
+    },
+    "进入活动探索界面": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    527,
+                    110,
+                    227,
+                    90
+                ],
+                "expected": "活动探索"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "next": [
+            "活动选择",
+            "[JumpBack]活动探索-右滑"
+        ],
+        "$__mpe_code": {
+            "position": {
+                "x": 357,
+                "y": 400
+            }
+        }
+    },
+    "通用-啥也不做": {
+        "focus": "结束任务",
+        "$__mpe_code": {
+            "position": {
+                "x": -270,
+                "y": 145
+            }
+        }
+    },
+    "通用-确认获得物品": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    511,
+                    154,
+                    276,
+                    116
+                ],
+                "expected": "获得物品"
+            }
+        },
+        "pre_wait_freezes": {
+            "time": 2000,
+            "threshold": 0.95
+        },
+        "action": {
+            "type": "Click"
+        },
+        "$__mpe_code": {
+            "position": {
+                "x": 972,
+                "y": 12
+            }
+        }
+    },
+    "通用-返回": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [
+                    0,
+                    0,
+                    1280,
+                    720
+                ],
+                "expected": [
+                    "成就",
+                    "档案",
+                    "是否退出宿舍",
+                    "支援助战",
+                    "徽章展示"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "smart_back",
+                "custom_action_param": {}
+            }
+        },
+        "timeout": 2000,
+        "max_hit": 5,
+        "next_doc": "2026-11-09 #2 通用返回口径（禁止 DirectHit/盲点 BACK）：只有个人配置面板（成就/档案）、档案页（支援助战/徽章展示）或「是否退出宿舍」对话框出现时才命中，命中后由 smart_back 查 BACK_TABLE 执行对应动作——个人面板点空白 (333,430) 不按 BACK（会退到 B 站游戏中心），档案页点左上「<」返回模板，宿舍弹窗点「确定」；不写 next，交给 JumpBack 自然续跑。",
+        "$__mpe_code": {
+            "position": {
+                "x": 1692,
+                "y": 12
+            }
+        }
+    },
+    "通用-返回主页": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    164,
+                    21,
+                    112,
+                    51
+                ],
+                "template": "返回主页.png"
+            }
+        },
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "pre_delay": 2000,
+        "action": {
+            "type": "Click"
+        },
+        "focus": "返回主页",
+        "$__mpe_code": {
+            "position": {
+                "x": 1932,
+                "y": 12
+            }
+        }
+    },
+    "首页_出击": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    1094,
+                    539,
+                    176,
+                    175
+                ],
+                "template": "StartUp/chuji.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "next_doc": "Set in code.",
+        "$__mpe_code": {
+            "position": {
+                "x": 1212,
+                "y": 12
+            }
+        }
+    }
+}

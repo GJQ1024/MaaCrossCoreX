@@ -1,0 +1,604 @@
+{
+    "末日战线_记忆门禁": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_gate",
+        "custom_action_param": { "task": "DoomsdayLine", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 5 },
+        "next": ["末日战线_入口"],
+        "on_error": ["末日战线_记忆跳过"],
+        "next_doc": "链首门禁：DoomsdayLine 每日一次，时间锚=每日 05:00（模拟次数按日刷新；跨日重置时刻未直接观察，记待校正风险）。gate 返回 False → on_error 早退，不写完成记录。force 由 interface.json「本次强制执行」追加。"
+    },
+    "末日战线_记忆跳过": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next_doc": "门禁拦截早退终端（无 next）：本次为跳过，不写完成记录。"
+    },
+    "末日战线_入口": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 4,
+        "next": ["末日战线_已在页", "末日战线_已在活动页", "末日战线_首页出击", "末日战线_回主页", "[JumpBack]子任务_进入首页", "末日战线_入口"],
+        "next_doc": "入口自足：已在末日战线页→直接判；已在活动探索页→找卡；在主界面→点出击；其它二级页→点 HomeButton 回主界面再重排。最多 4 轮。"
+    },
+    "末日战线_已在页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [850, 505, 240, 70],
+                "expected": ["演算单元"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_页判据"],
+        "next_doc": "末日战线页锚点：演算单元（战斗增益说明，不是货币，禁止点）。已在页则跳过全部导航。"
+    },
+    "末日战线_已在活动页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [560, 70, 240, 50],
+                "expected": ["活动探索"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_判据"],
+        "next_doc": "活动探索页标题 y≈84~103，与出击页入口（y≈154）靠 roi 区分。已在页则直接找末日战线卡。"
+    },
+    "末日战线_活动探索入口": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [540, 98, 215, 95],
+                "expected": ["活动探索"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": ["末日战线_判据"],
+        "next_doc": "出击选择页的「活动探索」入口（11-09 实测点 (657,154) 可进）。"
+    },
+    "末日战线_首页出击": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [1094, 539, 176, 175],
+                "template": "StartUp/chuji.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": ["末日战线_活动探索入口"],
+        "next_doc": "主界面「出击」按钮（与 首页_出击 同模板/同 ROI）。自带 next，不依赖 interface override。"
+    },
+    "末日战线_回主页": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [164, 21, 112, 51],
+                "template": "返回主页.png"
+            }
+        },
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "pre_delay": 1500,
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1500,
+        "next": ["末日战线_入口"],
+        "next_doc": "任意二级页左上 HomeButton（同 通用-返回主页 模板），点完回入口重排。"
+    },
+    "末日战线_判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["末日战线_卡片", "末日战线_首屏锚点", "末日战线_无进度退出"],
+        "next_doc": "三态分流：当前屏有「末日战线」卡→点卡；首屏其它活动卡锚点→右滑找卡；都不在→无进度退出（不写完成）。"
+    },
+    "末日战线_卡片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 175, 1280, 420],
+                "expected": ["末日战线"],
+                "threshold": 0.2
+            }
+        },
+        "pre_wait_freezes": { "time": 800, "threshold": 0.95 },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": ["末日战线_页判据"],
+        "next_doc": "活动卡带 roi 覆盖整屏宽度（第一/第二屏都能命中）；点卡片文字中心，动画冻结 800ms 后再点。"
+    },
+    "末日战线_首屏锚点": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [430, 175, 830, 420],
+                "expected": ["永境战域", "阈限禁区", "冥世试炼", "异态侵蚀"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_右滑"],
+        "next_doc": "首屏锚点存在 → 说明还在第一屏，需慢速大幅左滑到第二屏找末日战线卡。"
+    },
+    "末日战线_右滑": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ui_swipe",
+        "custom_action_param": { "preset": "slow_left" },
+        "post_delay": 800,
+        "next": ["末日战线_判据二次"],
+        "next_doc": "活动卡慢速大幅左滑（ui_common.SWIPE_PRESETS.slow_left：1100,430→200,435，900ms）；快速滑动和「▷」无效。坐标只在 ui_common 存一份。"
+    },
+    "末日战线_判据二次": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["末日战线_卡片", "末日战线_无进度退出"],
+        "next_doc": "滑到第二屏后再找卡；仍没有则无进度退出（活动未开放/不在两屏）。"
+    },
+    "末日战线_页判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 10000,
+        "next": ["末日战线_次数判据", "末日战线_无次数", "末日战线_页标题"],
+        "on_error": ["末日战线_页识别失败"],
+        "next_doc": "页内三态：次数>0→按挑战状态分流；次数=0→直接领任务奖励；次数读不到→再等页标题锚点（暴虐）。2026-11-09 教训：next 的 on_error 要把「页面根本没出来」兜成带留帧的明确失败，不能只挂在候选子节点上（候选识别失败不会触发子节点 on_error）。"
+    },
+    "末日战线_次数判据": {
+        "recognition": "Custom",
+        "custom_recognition": "doomsday_attempts",
+        "custom_recognition_param": { "roi": [1035, 585, 110, 40], "want": "positive" },
+        "action": "DoNothing",
+        "next": ["末日战线_未挑战", "末日战线_已挑战", "末日战线_状态未知"],
+        "next_doc": "次数 cur>0 命中（box=次数区）。之后按挑战状态分流：未挑战→战斗解锁扫荡；已挑战→扫荡。"
+    },
+    "末日战线_无次数": {
+        "recognition": "Custom",
+        "custom_recognition": "doomsday_attempts",
+        "custom_recognition_param": { "roi": [1035, 585, 110, 40], "want": "zero" },
+        "action": "DoNothing",
+        "next": ["末日战线_领任务奖励"],
+        "next_doc": "次数 0/3 命中：不战斗、不扫荡、不买次数，直接去领任务奖励。"
+    },
+    "末日战线_页标题": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [780, 80, 300, 90],
+                "expected": ["暴虐"],
+                "threshold": 0.2
+            }
+        },
+        "pre_delay": 1500,
+        "action": "DoNothing",
+        "max_hit": 6,
+        "next": ["末日战线_页判据"],
+        "on_error": ["末日战线_页识别失败"],
+        "next_doc": "页标题「暴虐」是末日战线页的兜底锚点；最多重试 6 次（等动画），仍不出现判失败留帧。"
+    },
+    "末日战线_页识别失败": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "末日战线页识别失败（暴虐锚点未出现）", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "末日战线_未挑战": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1040, 320, 200, 50],
+                "expected": ["未挑战"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_战斗入口"],
+        "next_doc": "本活动期未挑战过：扫荡为灰色（点击只弹 toast「挑战并获得一次挑战奖励后解锁扫荡功能」），必须先战斗一次解锁。"
+    },
+    "末日战线_已挑战": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1000, 300, 280, 70],
+                "expected": ["当前"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_扫荡回合"],
+        "next_doc": "已挑战（有本期最高伤害记录）：扫荡已解锁，消耗剩余次数扫荡即可，不做无意义的重复战斗。"
+    },
+    "末日战线_状态未知": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "末日战线次数已读，但未挑战/已挑战状态均未识别", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "末日战线_战斗入口": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1125, 580, 105, 40],
+                "expected": ["开始战斗"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1136, 600, 2, 2]
+            }
+        },
+        "post_delay": 2500,
+        "next": ["末日战线_战前页"],
+        "next_doc": "开始战斗文字范围 x≈1115~1190，实测中心 (1136,600)。"
+    },
+    "末日战线_战前页": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["末日战线_队伍就绪", "末日战线_空编队停止", "末日战线_战前未知"],
+        "next_doc": "战前确认页分流：战力读得到且达标→开始行动；页在但战力读不到/过低→空编队停止留帧；页都不像→战前未知。禁止点「自动设置」，不得改阵容。"
+    },
+    "末日战线_队伍就绪": {
+        "recognition": "Custom",
+        "custom_recognition": "doomsday_team_power",
+        "custom_recognition_param": { "roi": [400, 210, 500, 120], "min_power": 1000 },
+        "action": "DoNothing",
+        "next": ["末日战线_开始行动"],
+        "next_doc": "读战前页队伍战力（实测第1战队 51035、5/5、第6格空），max 取数避开「第1战队」的 1；>=1000 视为队伍就绪。"
+    },
+    "末日战线_空编队停止": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [400, 210, 500, 120],
+                "expected": ["第1战队"],
+                "threshold": 0.2
+            }
+        },
+        "action": "Custom",
+        "custom_action": "ui_mask_snapshot",
+        "custom_action_param": { "label": "doomsday_empty_team", "reason": "战前页战力读不到/低于阈值，留帧后判失败" },
+        "next": ["末日战线_空编队报错"],
+        "next_doc": "战前页仍在（第1战队可见）但 team_power 未命中：先留帧，再明确失败；不猜人、不补位、不点自动设置。"
+    },
+    "末日战线_空编队报错": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "空编队/未编入队伍，已留帧退出；不猜人、不自动补位", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "末日战线_战前未知": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "战前确认页识别失败，未开始战斗", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "末日战线_开始行动": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1010, 615, 210, 65],
+                "expected": ["开始行动"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1094, 651, 2, 2]
+            }
+        },
+        "post_delay": 3500,
+        "timeout": 240000,
+        "next": ["末日战线_战斗等待"],
+        "on_error": ["末日战线_撤退"],
+        "next_doc": "开始行动实测中心 (1094,651)；沿用游戏内现有编队，不改阵容。2026-11-09 实跑教训：next 列表的重试窗口由【当前节点】的 timeout 决定，不是子节点的 timeout；所以 240s 战斗上限必须写在 开始行动 上，并配 on_error 落撤退。"
+    },
+    "末日战线_战斗等待": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [120, 60, 620, 160],
+                "expected": ["战斗结束", "战斗胜利", "战斗失败"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 240000,
+        "action": "DoNothing",
+        "next": ["末日战线_战后判据"],
+        "on_error": ["末日战线_撤退"],
+        "next_doc": "实测战斗 150–160s，上限 240s（4 分钟）留余量；超时走撤退（撤退不扣次数），不硬等。"
+    },
+    "末日战线_战后判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 10000,
+        "next": ["末日战线_战斗失败", "末日战线_战斗结束", "末日战线_战后已回页", "末日战线_战后未知"],
+        "next_doc": "结算三态：战斗失败→关遮罩后判无进度（不重试、不买次数）；战斗结束/胜利→关遮罩回活动页继续；已被自动关回页→页判据。"
+    },
+    "末日战线_战斗失败": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [120, 60, 620, 160],
+                "expected": ["战斗失败"],
+                "threshold": 0.3
+            }
+        },
+        "action": "DoNothing",
+        "next": ["[JumpBack]通用-遮罩处理", "末日战线_无进度退出"],
+        "next_doc": "战斗失败：关闭结算遮罩（点中央 640,400）后退出，不重试、不买次数、不写完成记录。"
+    },
+    "末日战线_战斗结束": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [120, 60, 620, 160],
+                "expected": ["战斗结束", "战斗胜利"],
+                "threshold": 0.3
+            }
+        },
+        "action": "DoNothing",
+        "next": ["[JumpBack]通用-遮罩处理", "末日战线_页判据"],
+        "next_doc": "结算页（实测右上 (1010,120) 连点无效，中央 (640,400) 一次离页；白色 ▶ 是装饰不点）。关遮罩后回活动页再判次数。"
+    },
+    "末日战线_战后已回页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [780, 80, 300, 90],
+                "expected": ["暴虐"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_页判据"],
+        "next_doc": "结算已自动关闭并回到活动页（暴虐锚点可见）：直接再判次数。"
+    },
+    "末日战线_战后未知": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "战斗结算后未回到活动页", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "末日战线_撤退": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1230, 57, 2, 2]
+            }
+        },
+        "post_delay": 2000,
+        "next": ["末日战线_退出战斗"],
+        "next_doc": "战斗超时/需中止时点暂停 (1230,57)；撤退不扣次数。"
+    },
+    "末日战线_退出战斗": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [170, 330, 180, 60],
+                "expected": ["退出战斗"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1500,
+        "next": ["末日战线_撤退确认"]
+    },
+    "末日战线_撤退确认": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [420, 230, 440, 80],
+                "expected": ["是否撤退"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [781, 478, 2, 2]
+            }
+        },
+        "post_delay": 2500,
+        "timeout": 30000,
+        "next": ["末日战线_撤退结算"],
+        "on_error": ["末日战线_无进度退出"],
+        "next_doc": "「是否撤退」白名单确认框：点确定 (781,478)；撤退不消耗次数，所以收尾不写完成记录。等撤退结算页的重试窗口写在 撤退确认.timeout=30s，超时按无进度退出，不硬等。"
+    },
+    "末日战线_撤退结算": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [120, 60, 620, 160],
+                "expected": ["战斗结束"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 30000,
+        "action": "DoNothing",
+        "next": ["[JumpBack]通用-遮罩处理", "末日战线_无进度退出"],
+        "on_error": ["末日战线_无进度退出"],
+        "next_doc": "撤退结算页：关遮罩后直接无进度退出（不重进战斗，避免超时循环）。"
+    },
+    "末日战线_扫荡回合": {
+        "recognition": "Custom",
+        "custom_recognition": "ui_button_state",
+        "custom_recognition_param": { "preset": "sweep_doomsday", "roi": [915, 575, 120, 70], "want": "enabled", "threshold": 140 },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [977, 601, 2, 2]
+            }
+        },
+        "max_hit": 4,
+        "post_delay": 1800,
+        "next": ["末日战线_扫荡对话"],
+        "on_error": ["末日战线_领任务奖励"],
+        "next_doc": "先判扫荡按钮灰/亮（mean_brightness >= 140，与 SWEEP_ENABLED_BRIGHT 同口径）：灰态不点，直接去领任务奖励；亮态点文字中心 (977,601)。每次扫荡消耗 1 次。"
+    },
+    "末日战线_扫荡对话": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [350, 285, 600, 80],
+                "expected": ["是否消耗"],
+                "threshold": 0.2
+            }
+        },
+        "timeout": 6000,
+        "action": "DoNothing",
+        "next": ["末日战线_扫荡确定"],
+        "on_error": ["末日战线_领任务奖励"],
+        "next_doc": "扫荡确认框「是否消耗1次战斗次数…以本期最高伤害扫荡并领取奖励」；对话框没出现（按钮无效/次数不足）→ 去领奖。"
+    },
+    "末日战线_扫荡确定": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [720, 420, 120, 60],
+                "expected": ["确定"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [781, 449, 2, 2]
+            }
+        },
+        "post_delay": 2500,
+        "next": ["末日战线_扫荡结算"],
+        "next_doc": "扫荡确认框在 CONFIRM_WHITELIST 内，由本节点处理（generic 不代点取消）；确定实测约 (781,449)。"
+    },
+    "末日战线_扫荡结算": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 20, 760, 240],
+                "expected": ["扫荡成功"],
+                "threshold": 0.2
+            }
+        },
+        "timeout": 30000,
+        "action": "DoNothing",
+        "next": ["[JumpBack]通用-遮罩处理", "末日战线_页判据"],
+        "on_error": ["末日战线_页判据"],
+        "next_doc": "扫荡成功页与战斗结算同布局：关遮罩后回活动页再判次数（2/3→1/3 实测）。"
+    },
+    "末日战线_领任务奖励": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [60, 580, 170, 60],
+                "expected": ["任务"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": ["末日战线_任务页判据"],
+        "next_doc": "活动页左下「任务」入口（实测约 134,609）。"
+    },
+    "末日战线_任务页判据": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [90, 85, 340, 80],
+                "expected": ["任务奖励"],
+                "threshold": 0.2
+            }
+        },
+        "timeout": 6000,
+        "action": "DoNothing",
+        "next": ["末日战线_任务页_可领", "末日战线_任务页_灰"],
+        "on_error": ["末日战线_无进度退出"],
+        "next_doc": "用页面标题「任务奖励」（白色粗体，OCR 稳定）确认在任务页；不用灰色「一键领取」当锚点（实测灰字 OCR 会漏检）。标题读得到才判按钮态：亮→领奖，灰→无奖励完成；两种都判不到→无进度退出，不写完成记录。"
+    },
+    "末日战线_任务页_可领": {
+        "recognition": "Custom",
+        "custom_recognition": "ui_button_state",
+        "custom_recognition_param": { "preset": "claim_all", "roi": [1010, 85, 200, 60], "want": "enabled", "threshold": 140 },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1100, 120, 2, 2]
+            }
+        },
+        "post_delay": 2000,
+        "next": ["末日战线_领取弹窗"],
+        "next_doc": "「一键领取」亮态（brightness>=140，2026-11-09 实测灰=44.7、亮=148.8）才点 (1100,120)；点完判「获得物品」。若亮态点了却没有弹窗，next 耗尽后由父级 on_error 落到无进度退出，不虚报完成。"
+    },
+    "末日战线_任务页_灰": {
+        "recognition": "Custom",
+        "custom_recognition": "ui_button_state",
+        "custom_recognition_param": { "preset": "claim_all", "roi": [1010, 85, 200, 60], "want": "disabled", "threshold": 140 },
+        "action": "DoNothing",
+        "next": ["末日战线_无奖励完成"],
+        "next_doc": "「一键领取」灰态（brightness<140）=本日无可领奖励；不点按钮，直接写完成。与 _可领 是并列互斥的两个显式识别，不靠 on_error 兜。"
+    },
+    "末日战线_领取弹窗": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [447, 117, 405, 117],
+                "expected": ["获得物品"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 6000,
+        "action": "DoNothing",
+        "next": ["[JumpBack]通用-遮罩处理", "末日战线_领取再判"],
+        "on_error": ["末日战线_无奖励完成"],
+        "next_doc": "「获得物品」弹窗交给通用遮罩（点空白 640,537 并复核）；没有弹窗说明无可领奖励。"
+    },
+    "末日战线_领取再判": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 3000,
+        "max_hit": 5,
+        "next": ["末日战线_领取弹窗", "末日战线_记忆完成"],
+        "next_doc": "领奖后可能连弹多个「获得物品」；再判一次，最多 5 轮，无弹窗即完成。"
+    },
+    "末日战线_记忆完成": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_complete",
+        "custom_action_param": { "task": "DoomsdayLine", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 5 },
+        "next": ["通用-返回主页"],
+        "next_doc": "有可做（战斗/扫荡/领奖）且已跑通 → 写完成记录后回主页。"
+    },
+    "末日战线_无奖励完成": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_complete",
+        "custom_action_param": { "task": "DoomsdayLine", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 5 },
+        "next": ["通用-返回主页"],
+        "next_doc": "次数 0/3 且任务页无一键领取 = 今日已做完 → 写完成记录后回主页。"
+    },
+    "末日战线_无进度退出": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 3,
+        "next": ["通用-返回主页", "[JumpBack]子任务_点击返回", "末日战线_无进度退出"],
+        "next_doc": "卡片不在当前两屏/活动未开放/战斗失败：不写完成记录，下次队列继续尝试。最多 3 轮。"
+    }
+}

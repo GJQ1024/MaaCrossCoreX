@@ -1,0 +1,34 @@
+{
+    "关闭游戏": {
+        "timeout": 60000,
+        "next": [
+            "关闭游戏_停止"
+        ],
+        "on_error": [
+            "关闭游戏_停止"
+        ],
+        "next_doc": "StopApp 任意界面（主界面/子页面/未启动）均生效；无需先恢复主界面。原「确认主界面再停」设计经实机验证多余（普通节点在 next 中瞬时命中，OCR 确认永远轮不到），2026-11-01 简化"
+    },
+    "关闭游戏_停止": {
+        "action": "StopApp",
+        "package": "com.megagame.crosscore.bilibili",
+        "post_delay": 2000,
+        "next": [
+            "关闭游戏_并关闭模拟器",
+            "关闭游戏_仅关闭游戏"
+        ],
+        "next_doc": "停游后交棒给上游的可选收尾节点（interface 选项「关闭模拟器」控制）；包名按 B服 实机账号写死"
+    },
+    "关闭游戏_并关闭模拟器": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "shutdown_mumu",
+        "enabled": false,
+        "next_doc": "上游原节点沿用；默认改为 false：无 agent 直跑 pipeline 时 custom action 未注册会导致任务失败，GUI 选项「关闭模拟器=Yes」会显式置 true"
+    },
+    "关闭游戏_仅关闭游戏": {
+        "recognition": "DirectHit",
+        "enabled": true,
+        "next_doc": "上游原节点；默认改为 true 作为停止后终点（上游默认 false 且两个可选节点同时 disabled 时 next 无命中会判任务失败——实机 2026-11-01 复现；GUI 选项两态均会显式覆盖）"
+    }
+}

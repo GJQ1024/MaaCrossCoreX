@@ -1,0 +1,263 @@
+{
+    "新手教程_入口": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "教程_结束复核"
+        ],
+        "next_doc": "任务入口 + 一次性完成探针。前提：游戏已停在教程任意页面（登录后引导），不启动游戏、不登录。先试一次结束判据：已全部结束（功能栏全开 + 无手指）就直接成功；否则落回 新手教程_调度。只探一次是为了不锁死——教程中段主界面功能栏也是全开的，反复复查会挡住阶段闸"
+    },
+
+    "新手教程_调度": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 600,
+        "timeout": 20000,
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next": [
+            "教程_交接语",
+            "新手教程_危险弹窗检测",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "[JumpBack]子任务_关闭促销弹窗",
+            "[JumpBack]子任务_点击同意",
+            "新手教程_跳过",
+            "[JumpBack]跳过首领演出动画_OCR",
+            "新手教程_点击任意处继续",
+            "新手教程_继续",
+            "[JumpBack]子任务_获得物品",
+            "[JumpBack]通用-确认获得物品",
+            "[JumpBack]子任务_点击确认",
+            "战斗_进场",
+            "战斗_胜利",
+            "战斗_胜利_模板",
+            "战斗_解锁关闭",
+            "引导_建角色入口",
+            "引导_构建页入口",
+            "引导_编队页入口",
+            "引导_出击选择入口",
+            "引导_关卡入口",
+            "引导_技能设置入口",
+            "引导_任务页入口",
+            "引导_补给站页入口",
+            "引导_记录结果页入口",
+            "引导_主界面入口",
+            "新手教程_安全区盲点",
+            "新手教程_空转等待"
+        ],
+        "next_doc": "调度中枢：每轮按序扫描，命中即执行并把控制权交回本节点。max_hit=600 为整条教程的轮次预算（按 0-1~0-3 实测耗时预留×2，覆盖三场战斗 + 全段引导）；600 次耗尽后 next 全部失效，本轮扫描超时 → on_error → 新手教程_超时失败，不会静默结束。结束判据（教程_结束复核）**不放在本节点 next 里**：教程中段主界面功能栏也已全开，若每轮都先复查会命中后回跳本节点形成空转，挡住所有阶段闸；结束判据只从 新手教程_入口 / 教程_交接语 / 引导_回调度 / 战斗_回调度 四处触发。扫描顺序按设计固定：交接语/危险弹窗闸 → 剧情跳过确认 → 战斗段 → 引导段 → 兜底；不要再把引导段前移到战斗段之前（战斗是强制态，未结束前引导闸命中会抢走回合）"
+    },
+
+    "教程_交接语": {
+        "recognition": "OCR",
+        "roi": [380, 295, 700, 130],
+        "expected": ["交给总队长判断"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "max_hit": 1,
+        "timeout": 6000,
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "next": [
+            "教程_结束复核"
+        ],
+        "on_error": [
+            "新手教程_调度"
+        ],
+        "next_doc": "0-4 编队→自动设置页的普罗米修斯气泡「……接下来就交给总队长判断了。」出现即立刻做一次结束复核；不满足就回调度继续推进（此后每轮由 教程_结束复核 重试）。来源帧 T6_82_handoff_A.png"
+    },
+
+    "教程_结束复核": {
+        "recognition": "And",
+        "all_of": [
+            "NavMainBottomBar",
+            "NavMainBaseText"
+        ],
+        "action": "DoNothing",
+        "timeout": 2500,
+        "pre_wait_freezes": {
+            "time": 3000,
+            "threshold": 0.95
+        },
+        "next": [
+            "教程_无手指"
+        ],
+        "on_error": [
+            "新手教程_调度"
+        ],
+        "next_doc": "结束判据第一条件：主界面底部栏在场 + 底栏「基地」文字在场，再等画面静止 3s 避免半透明过渡帧误判。两个节点：NavMainBottomBar（OCR roi [493,580,773,137]，expected 为空，来源帧 T6_97_home_clean.png）与 NavMainBaseText（OCR 同区，expected「基地」）。**加 NavMainBaseText 的原因（2026-11-03 3号首跑实测）**：战斗界面底部「能量 100/100」正落在 NavMainBottomBar 的 ROI 内（证据帧 tutorial_run3/frames/s50_skip_battle2.png，OCR 能量 bbox [434,651,58,31]、100 bbox [502,678]），expected 为空＝任意文字即可 → 战斗中被误判为「教程已结束」，pipeline 7.5s 假成功退出。加「基地」字闸后战斗态不再命中。第二条件仍由下游 教程_无手指 承担：不用「基地/任务/编队/构建/补给站/出击」六项全命中的原因——某项会常驻收缩或消失（首充奖励领完、活动结束、功能解锁前后），全命中一旦缺一项，结束复核永不成立，教程走完也会被判超时失败。NavMainTaskText / NavMainFormation / NavMainBuild / NavMainSupplyStation / NavMainSortie 仍仅作排查线索，不进 all_of"
+    },
+
+    "教程_无手指": {
+        "recognition": "TemplateMatch",
+        "template": "Tutorial/Finger.png",
+        "roi": [0, 0, 1280, 720],
+        "threshold": 0.85,
+        "inverse": true,
+        "action": "DoNothing",
+        "next": [
+            "教程_完成"
+        ],
+        "on_error": [
+            "新手教程_调度"
+        ],
+        "next_doc": "结束判据第二条件：全屏找不到引导手指（inverse 反相，阈值 0.85；模板自检正例 1.000/0.887、负例 ≤0.676）。手指仍在 → 本节点不命中 → 上层 2.5s 后回调度继续扫描"
+    },
+
+    "教程_完成": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next_doc": "唯一成功出口：交接语已出现 + 主界面底部栏在场 + 引导手指消失。终端节点，无 next"
+    },
+
+    "新手教程_危险弹窗检测": {
+        "recognition": "OCR",
+        "roi": [0, 0, 1280, 720],
+        "expected": ["购买", "充值", "抽卡", "\\$", "¥", "体力药", "礼包", "粲晶", "星贸凭证", "花费", "十连"],
+        "threshold": 0.3,
+        "action": "DoNothing",
+        "timeout": 8000,
+        "on_error": [
+            "新手教程_危险中止"
+        ],
+        "next": [
+            "新手教程_危险弹窗_退出"
+        ],
+        "next_doc": "安全红线闸：全屏只识别不点击。命中付费类文案（粲晶/星贸凭证/花费/十连等）后只允许走 新手教程_危险弹窗_退出；8s 内找不到任何安全入口 → 新手教程_危险中止（明确失败，不盲点）。2026-11-03 移除裸「消耗」关键词：新手池横幅「本次构建不消耗任何资源」含该词，会导致每轮抢在补给站段之前误触发，把免费段挡死"
+    },
+
+    "新手教程_危险弹窗_退出": {
+        "recognition": "OCR",
+        "roi": [100, 260, 1080, 420],
+        "expected": ["取消", "稍后", "以后再说", "暂不", "放弃", "关闭", "跳过", "返回"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 3,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "新手教程_危险中止"
+        ],
+        "next_doc": "安全词白名单：只点取消/稍后/以后再说/暂不/放弃/关闭/跳过/返回，永远不点「确定」"
+    },
+
+    "新手教程_危险中止": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "arena_atomic",
+        "custom_action_param": {
+            "operation": "fail",
+            "reason": "教程管线安全红线：命中付费/消耗类文案但找不到任何取消/关闭/稍后入口，按红线中止，未点击任何购买类按钮"
+        },
+        "next_doc": "失败出口 1：安全红线触发，明确失败"
+    },
+
+    "新手教程_超时失败": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "arena_atomic",
+        "custom_action_param": {
+            "operation": "fail",
+            "reason": "教程管线超出轮次预算：新手教程_调度 600 次（按 0-1~0-3 实测耗时预留×2）耗尽，仍未同时满足「交接语 + 主界面底部栏在场 + 无引导手指」"
+        },
+        "next_doc": "失败出口 2：轮次预算耗尽 / 调度 next 全部失效"
+    },
+
+    "新手教程_安全区盲点": {
+        "recognition": "DirectHit",
+        "roi": [440, 190, 400, 260],
+        "action": "Click",
+        "max_hit": 60,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "兜底盲点：ROI 收窄到画面中上部（避开底部购买/确认区），仅在全部显式判据都没命中时点中心；上限 60 次（已登记 docs/coords.md 例外）"
+    },
+
+    "新手教程_空转等待": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 540,
+        "post_delay": 1500,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "兜底空转：盲点 60 次用完后不再乱点，只按 1.5s 节拍空转；540 + 60 次用尽后调度 next 全空 → 20s 超时 → 新手教程_超时失败，保证 600 次预算的终点是明确失败而不是静默结束"
+    },
+
+    "新手教程_跳过": {
+        "recognition": "OCR",
+        "roi": [1000, 0, 280, 110],
+        "expected": ["跳过"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 3,
+        "post_delay": 800,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "教程_跳过_剧情"
+        ],
+        "next_doc": "剧情/演出「跳过」（来源帧 T3_29_skip_dialog_A.png，bbox 1134,31,44,25）；点击失败 → 教程_跳过_剧情 回调度"
+    },
+
+    "新手教程_点击任意处继续": {
+        "recognition": "OCR",
+        "roi": [200, 520, 880, 200],
+        "expected": ["点击任意处继续", "点击空白处继续", "点击任意位置"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 3,
+        "post_delay": 600,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "教程_跳过_剧情"
+        ],
+        "next_doc": "剧情页「点击任意处继续」提示"
+    },
+
+    "新手教程_继续": {
+        "recognition": "OCR",
+        "roi": [820, 480, 440, 240],
+        "expected": ["继续"],
+        "threshold": 0.3,
+        "action": "Click",
+        "max_hit": 3,
+        "post_delay": 600,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "教程_跳过_剧情"
+        ],
+        "next_doc": "引导气泡的「继续」按钮（右下）"
+    },
+
+    "教程_跳过_剧情": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "post_delay": 600,
+        "timeout": 5000,
+        "next": [
+            "新手教程_调度"
+        ],
+        "on_error": [
+            "新手教程_超时失败"
+        ],
+        "next_doc": "「剧情跳过/继续」点击未成功：跳过本步，回调度重扫（不硬等、不重复点）"
+    }
+}

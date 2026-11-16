@@ -1,0 +1,504 @@
+{
+    "阀限禁区_记忆门禁": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_gate",
+        "custom_action_param": { "task": "ThresholdZone", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 10 },
+        "next": ["阀限禁区_入口"],
+        "on_error": ["阀限禁区_记忆跳过"],
+        "next_doc": "链首门禁：ThresholdZone 每日一次，时间锚=每日 10:00（玩法说明：BOSS 每 3 天轮换，第 4 天 10 点开启下一 BOSS；次数按轮换周期重置，不是每日重置）。gate 返回 False → on_error 早退，不写完成记录。force 由 interface.json「本次强制执行」追加。"
+    },
+    "阀限禁区_记忆跳过": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next_doc": "门禁拦截早退终端（无 next）：本次为跳过，不写完成记录。"
+    },
+    "阀限禁区_入口": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 4,
+        "next": ["阀限禁区_已在详情页", "阀限禁区_已在活动页", "阀限禁区_首页出击", "阀限禁区_回主页", "[JumpBack]子任务_进入首页", "阀限禁区_入口"],
+        "next_doc": "入口自足：已在阀限禁区详情页→直接判；已在活动探索页→找卡；在主界面→点出击；其它二级页→点 HomeButton 回主界面再重排。最多 4 轮。"
+    },
+    "阀限禁区_已在详情页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [900, 70, 240, 50],
+                "expected": ["巨蟹座"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_页判据"],
+        "next_doc": "详情页锚点：标题「巨蟹座-海魔」（原生约 925..1088, 78..110）。已在页则跳过全部导航。"
+    },
+    "阀限禁区_已在活动页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [560, 70, 240, 50],
+                "expected": ["活动探索"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_判据"],
+        "next_doc": "活动探索页标题 y≈84~103，与出击页入口（y≈154）靠 roi 区分。已在页则直接找阀限禁区卡。"
+    },
+    "阀限禁区_活动探索入口": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [540, 98, 215, 95],
+                "expected": ["活动探索"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": ["阀限禁区_判据"],
+        "next_doc": "出击选择页的「活动探索」入口（与末日战线同 ROI，实测可进）。"
+    },
+    "阀限禁区_首页出击": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [1094, 539, 176, 175],
+                "template": "StartUp/chuji.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": ["阀限禁区_活动探索入口"],
+        "next_doc": "主界面「出击」按钮（同 首页_出击 模板/ROI）。自带 next，不依赖 interface override。"
+    },
+    "阀限禁区_回主页": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [164, 21, 112, 51],
+                "template": "返回主页.png"
+            }
+        },
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "pre_delay": 1500,
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1500,
+        "next": ["阀限禁区_入口"],
+        "next_doc": "任意二级页左上 HomeButton（同 通用-返回主页 模板），点完回入口重排。"
+    },
+    "阀限禁区_判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["阀限禁区_卡片", "阀限禁区_首屏锚点", "阀限禁区_无进度退出"],
+        "next_doc": "三态分流：当前屏有「阀限禁区」卡→点卡；首屏其它活动卡锚点→慢速左滑找卡；都不在→无进度退出（活动未开放/卡已消失，不写完成）。"
+    },
+    "阀限禁区_卡片": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 175, 1280, 420],
+                "expected": ["巨蟹座", "阀限禁区", "阈限禁区", "阔限禁区"],
+                "threshold": 0.2
+            }
+        },
+        "pre_wait_freezes": { "time": 800, "threshold": 0.95 },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": ["阀限禁区_页判据"],
+        "next_doc": "活动卡文字原生 y≈491~525（当前第一屏中间卡）；roi 覆盖整屏宽度，动画冻结 800ms 后再点文字中心。OCR 兼容「阀/阈」两种误读。"
+    },
+    "阀限禁区_首屏锚点": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [430, 175, 830, 420],
+                "expected": ["永境战域", "冥世试炼", "拟真演训", "异态侵蚀", "末日战线"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_右滑"],
+        "next_doc": "首屏锚点存在 → 说明还没看到阀限禁区卡，需慢速大幅左滑。"
+    },
+    "阀限禁区_右滑": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ui_swipe",
+        "custom_action_param": { "preset": "slow_left" },
+        "post_delay": 800,
+        "next": ["阀限禁区_判据二次"],
+        "next_doc": "活动卡慢速大幅左滑（ui_common.SWIPE_PRESETS.slow_left：1100,430→200,435，900ms）；坐标只在 ui_common 存一份。"
+    },
+    "阀限禁区_判据二次": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["阀限禁区_卡片", "阀限禁区_无进度退出"],
+        "next_doc": "滑到下一屏后再找卡；仍没有则无进度退出。"
+    },
+    "阀限禁区_页判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 10000,
+        "next": ["阀限禁区_次数判据", "阀限禁区_无次数", "阀限禁区_活动已结束", "阀限禁区_页标题"],
+        "on_error": ["阀限禁区_页识别失败"],
+        "next_doc": "页内三态：次数>0→进战斗；次数=0→本轮换次数已用完，记完成；倒计时「已结束」→活动结束无进度；次数读不到→再等页标题锚点。next 的 on_error 把「页面根本没出来」兜成带留帧的明确失败。"
+    },
+    "阀限禁区_次数判据": {
+        "recognition": "Custom",
+        "custom_recognition": "doomsday_attempts",
+        "custom_recognition_param": { "roi": [960, 632, 140, 45], "want": "positive", "label": "阀限禁区" },
+        "action": "DoNothing",
+        "next": ["阀限禁区_战斗入口"],
+        "next_doc": "次数 cur>0 命中（roi=RESOURCE_ROIS.threshold_attempts，实测「次数：3/3」「2/3」）。打榜型没有扫荡，直接进战斗。"
+    },
+    "阀限禁区_无次数": {
+        "recognition": "Custom",
+        "custom_recognition": "doomsday_attempts",
+        "custom_recognition_param": { "roi": [960, 632, 140, 45], "want": "zero", "label": "阀限禁区" },
+        "action": "DoNothing",
+        "next": ["阀限禁区_次数用完完成"],
+        "next_doc": "次数 0/3 命中：不战斗、不买次数（玩法说明写「消耗完毕后可购买」，本任务一律不买）。"
+    },
+    "阀限禁区_活动已结束": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [930, 118, 280, 32],
+                "expected": ["已结束"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_无进度退出"],
+        "next_doc": "【未实测】活动结束后详情页倒计时区的表现。当前活动剩 2 天，无法构造；按「活动剩余时间：已结束」兜底为无进度退出。若实际文案不同，这里只会识别失败并由 页标题 继续重试，不会误判成功。"
+    },
+    "阀限禁区_页标题": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [900, 70, 240, 50],
+                "expected": ["巨蟹座"],
+                "threshold": 0.2
+            }
+        },
+        "pre_delay": 1500,
+        "action": "DoNothing",
+        "max_hit": 6,
+        "next": ["阀限禁区_页判据"],
+        "on_error": ["阀限禁区_页识别失败"],
+        "next_doc": "页标题「巨蟹座」兜底锚点；最多重试 6 次（等动画/转场），仍不出现判失败留帧。"
+    },
+    "阀限禁区_页识别失败": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "阀限禁区详情页识别失败（巨蟹座锚点未出现）", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "阀限禁区_战斗入口": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1090, 630, 160, 45],
+                "expected": ["开始战斗"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1169, 652, 2, 2]
+            }
+        },
+        "max_hit": 3,
+        "post_delay": 2500,
+        "next": ["阀限禁区_战前页"],
+        "on_error": ["阀限禁区_无进度退出"],
+        "next_doc": "「开始战斗」文字原生约 1119..1219, 640..665，实测中心 (1169,652)。max_hit=3 与本轮换 3 次上限对齐：第 4 次进入直接判无进度，防止次数读数不降造成死循环。"
+    },
+    "阀限禁区_战前页": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 8000,
+        "next": ["阀限禁区_队伍就绪", "阀限禁区_空编队停止", "阀限禁区_战前未知"],
+        "next_doc": "战前确认页分流：战力读得到且达标→开始行动；页在但战力读不到/过低→空编队停止留帧；页都不像→战前未知。禁止点「自动设置」「机动战术」，不得改阵容。"
+    },
+    "阀限禁区_队伍就绪": {
+        "recognition": "Custom",
+        "custom_recognition": "doomsday_team_power",
+        "custom_recognition_param": { "roi": [400, 210, 500, 120], "min_power": 1000, "label": "阀限禁区" },
+        "action": "DoNothing",
+        "next": ["阀限禁区_开始行动"],
+        "next_doc": "读编队页「战力：51035」（实测 5/5 满编、第 6 格空），max 取数避开等级数字；>=1000 视为队伍就绪。"
+    },
+    "阀限禁区_空编队停止": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [450, 235, 700, 60],
+                "expected": ["战力", "未编入"],
+                "threshold": 0.2
+            }
+        },
+        "action": "Custom",
+        "custom_action": "ui_mask_snapshot",
+        "custom_action_param": { "label": "threshold_empty_team", "reason": "编队页战力读不到/低于阈值，留帧后判失败" },
+        "next": ["阀限禁区_空编队报错"],
+        "next_doc": "编队页仍在（战力文字可见或提示未编入）但 team_power 未命中：先留帧，再明确失败；不猜人、不补位、不点自动设置。"
+    },
+    "阀限禁区_空编队报错": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "空编队/未编入队伍，已留帧退出；不猜人、不自动补位", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "阀限禁区_战前未知": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "阀限禁区战前确认页识别失败，未开始战斗", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "阀限禁区_开始行动": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1010, 615, 210, 65],
+                "expected": ["开始行动"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1119, 663, 2, 2]
+            }
+        },
+        "post_delay": 3500,
+        "timeout": 360000,
+        "next": ["阀限禁区_仓满确认", "阀限禁区_战斗等待"],
+        "on_error": ["阀限禁区_撤退"],
+        "next_doc": "「开始行动」文字原生约 1056..1188, 648..675，实测中心 (1119,663)；左侧「燃料0」是消耗显示（不是体力不足，2026-11-09 实测 0 燃料仍可正常开战）。沿用游戏内现有编队。2026-11-09 实测两场战斗分别为 276s / 234s（40 次操作上限），300s 只剩 24s 余量，故上限取 360s；next 的重试窗口由本节点 timeout 决定。先判仓满弹窗，再等结算。"
+    },
+    "阀限禁区_仓满确认": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [320, 280, 640, 220],
+                "expected": ["芯片仓已满"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 5000,
+        "action": {
+            "type": "Custom",
+            "custom_action": "ui_confirm_cancel",
+            "custom_action_param": {}
+        },
+        "next": ["阀限禁区_仓满留帧"],
+        "on_error": ["阀限禁区_仓满留帧"],
+        "next_doc": "2026-11-09 实测：芯片仓满时点「开始行动」会弹「芯片仓已满，是否进行清理？取消/确定」，点取消后留在编队页、战斗不开始。清理会销毁芯片，绝不点确定；一律取消并留帧失败。"
+    },
+    "阀限禁区_仓满留帧": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ui_mask_snapshot",
+        "custom_action_param": { "label": "threshold_chip_full", "reason": "芯片仓已满，拒绝清理，已取消并留帧" },
+        "next": ["阀限禁区_仓满报错"],
+        "next_doc": "留证据帧后明确失败，不静默卡住。"
+    },
+    "阀限禁区_仓满报错": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "芯片仓已满，清理会销毁芯片，已取消；请手动清理后重试（不写完成记录）", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "阀限禁区_战斗等待": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 25, 380, 110],
+                "expected": ["战斗结束", "战斗胜利", "战斗失败"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 360000,
+        "action": "DoNothing",
+        "next": ["阀限禁区_战后判据"],
+        "on_error": ["阀限禁区_撤退"],
+        "next_doc": "结算标题「战斗胜利」实测原生约 4..350, 38..113；两场实测 276s / 234s，上限 360s。超时走撤退，不硬等。"
+    },
+    "阀限禁区_战后判据": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 10000,
+        "next": ["阀限禁区_结算提示", "阀限禁区_战斗失败", "阀限禁区_战斗结束", "阀限禁区_战后已回页", "阀限禁区_战后未知"],
+        "next_doc": "结算优先处理「芯片仓库已达上限」纯提示（只有确定），再按成败退出；已自动回页则直接再判次数。"
+    },
+    "阀限禁区_结算提示": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "ui_mask_probe",
+                "custom_recognition_param": { "preset": "chip_warehouse_full" }
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": { "preset": "chip_warehouse_full" }
+            }
+        },
+        "next": ["阀限禁区_战后判据"],
+        "on_error": ["阀限禁区_结算退出"],
+        "next_doc": "结算页「提示：芯片仓库已达上限…确定」（2026-11-09 实测出现并关闭）。按正文关键词识别，关闭点由 confirm 区 OCR 定位「确定」按钮、不写死坐标；参数集中在 ui_common.MASK_SPECS.chip_warehouse_full，关掉后回战后判据。关不掉则退回后台尝试 BACK 退出。"
+    },
+    "阀限禁区_战斗失败": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 25, 380, 110],
+                "expected": ["战斗失败"],
+                "threshold": 0.3
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_结算退出", "阀限禁区_无进度退出"],
+        "next_doc": "战斗失败：BACK 退出后直接无进度退出，不重试、不买次数、不写完成记录。"
+    },
+    "阀限禁区_战斗结束": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 25, 380, 110],
+                "expected": ["战斗结束", "战斗胜利"],
+                "threshold": 0.3
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_结算退出", "阀限禁区_无进度退出"],
+        "next_doc": "战斗胜利：结算页没有领取按钮，伤害档位奖励在结算时自动入账（已由奖励预览「已领取」实拍确认）；用 BACK 退出（2026-11-09 实测 3/3→2/3 并回详情页）。"
+    },
+    "阀限禁区_结算退出": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "smart_back",
+                "custom_action_param": {}
+            }
+        },
+        "post_delay": 1500,
+        "next": ["阀限禁区_页判据"],
+        "on_error": ["阀限禁区_无进度退出"],
+        "next_doc": "结算退出用 BACK（实测有效；未验证中央空白点击，所以不抄末日战线的 (640,400)）。退出后回详情页复判次数，继续下一把或收尾。"
+    },
+    "阀限禁区_战后已回页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [900, 70, 240, 50],
+                "expected": ["巨蟹座"],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": ["阀限禁区_页判据"],
+        "next_doc": "结算已自动关闭并回到详情页（巨蟹座锚点可见）：直接再判次数。"
+    },
+    "阀限禁区_战后未知": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": { "reason": "战斗结算后未回到详情页", "cleanup_entry": "通用_回主界面并结束" }
+    },
+    "阀限禁区_撤退": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1230, 57, 2, 2]
+            }
+        },
+        "post_delay": 2000,
+        "next": ["阀限禁区_退出战斗"],
+        "next_doc": "战斗超时/需中止时点暂停 (1230,57)（与实机截图 ⏸ 位置一致）。【未单独实测本模式的暂停菜单】后续节点沿用同游戏战斗暂停菜单口径，若识别不到会明确失败。"
+    },
+    "阀限禁区_退出战斗": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [170, 330, 180, 60],
+                "expected": ["退出战斗"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1500,
+        "next": ["阀限禁区_撤退确认"]
+    },
+    "阀限禁区_撤退确认": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [420, 230, 440, 80],
+                "expected": ["是否撤退"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [781, 478, 2, 2]
+            }
+        },
+        "post_delay": 2500,
+        "timeout": 30000,
+        "next": ["阀限禁区_撤退结算"],
+        "on_error": ["阀限禁区_无进度退出"],
+        "next_doc": "「是否撤退」白名单确认框：点确定 (781,478)。撤退不写完成记录。"
+    },
+    "阀限禁区_撤退结算": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [0, 25, 380, 110],
+                "expected": ["战斗结束"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 30000,
+        "action": "DoNothing",
+        "next": ["阀限禁区_结算退出", "阀限禁区_无进度退出"],
+        "on_error": ["阀限禁区_无进度退出"],
+        "next_doc": "撤退结算页：BACK 退出后不重进战斗，避免超时循环。"
+    },
+    "阀限禁区_次数用完完成": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_memory_complete",
+        "custom_action_param": { "task": "ThresholdZone", "cooldown_minutes": 0, "daily_limit": 1, "refresh_hour": 10 },
+        "next": ["通用-返回主页"],
+        "next_doc": "次数 0/3 = 本轮换周期 3 次机会已用完（玩法说明：每 3 天轮换，不按日刷新）→ 写完成记录后回主页。"
+    },
+    "阀限禁区_无进度退出": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "max_hit": 3,
+        "next": ["通用-返回主页", "[JumpBack]子任务_点击返回", "阀限禁区_无进度退出"],
+        "next_doc": "卡片不在当前屏/活动未开放/战斗失败/仓满取消：不写完成记录，下次队列继续尝试。最多 3 轮。"
+    }
+}

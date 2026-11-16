@@ -1,0 +1,42 @@
+MaaCrossCoreX 第三方组件与许可声明
+==================================
+
+本发行包为「B 包（开箱即用版）」，包含下列第三方组件。各组件版权归其原作者所有，
+本声明不改变任何原始许可条款。
+
+
+1. MaaCrossCoreX（本项目自有部分：agent、resource、interface.json 等）
+   许可：MIT
+   源码：https://github.com/GJQ1024/MaaCrossCoreX
+
+
+2. MaaCrossCoreX（基于 MFAAvalonia 修改的壳：MaaCrossCoreX.exe、MaaCrossCoreX.dll、
+   libs/ 下的壳程序集）
+   许可：GNU General Public License v3.0（全文见包根 LICENSE）
+   源码：https://github.com/GJQ1024/MaaCrossCoreX-Shell
+   对应标签：shell-v0.1.232-mccx.1
+   对应提交：027891ea5f7831dbc931b6af9d9c9019100381dd
+   核心程序集：libs/MFAAvalonia.Core.dll
+   SHA256：A75349953D63A1F12F895B5DD9F0E103A69FD2AE28569414813961EDAFE2C74C
+   基于上游 MFAAvalonia（https://github.com/SweetSmellFox/MFAAvalonia ，GPL-3.0）修改。
+   修改内容与完整历史见上述源码仓库。
+
+
+3. MaaFramework 原生运行时（runtimes/win-x64/native/ 下的 Maa*.dll、
+   opencv_world4_maa.dll、onnxruntime_maa.dll 等）
+   许可：GNU Lesser General Public License v3.0
+   源码：https://github.com/MaaXYZ/MaaFramework
+
+
+4. 其它 .NET 依赖（libs/ 下的程序集）
+   完整清单与版本见 MaaCrossCoreX.deps.json。
+   其中 Avalonia、SukiUI、SkiaSharp、SharpHook、Sentry、MailKit、MimeKit、
+   CommunityToolkit.Mvvm 等主要组件采用 MIT 许可；其余组件许可见各项目主页
+   与对应 NuGet 包内的许可文件。
+
+
+5. Python 运行时与依赖（python/ 目录）
+   各自保留原有许可，详见 python/Lib/site-packages/*/licenses/ 及各包元数据。
+
+
+本发行包因包含 GPL-3.0 的 MFAAvalonia 修改版，整体按 GPL-3.0 分发。

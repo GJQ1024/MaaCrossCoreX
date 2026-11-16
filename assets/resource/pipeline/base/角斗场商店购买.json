@@ -1,0 +1,129 @@
+{
+  "角斗场商店购买": {
+    "next": [
+      "角斗场商店_唤醒",
+      "[JumpBack]子任务_进入首页"
+    ]
+  },
+  "角斗场商店_唤醒": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [880, 250, 1, 1]
+    },
+    "max_hit": 1,
+    "post_delay": 1200,
+    "next": ["角斗场商店_出击", "[JumpBack]子任务_进入首页"]
+  },
+  "角斗场商店_出击": {
+    "recognition": {
+      "type": "TemplateMatch",
+      "param": {
+        "roi": [1094, 539, 176, 175],
+        "template": ["StartUp/chuji.png"]
+      }
+    },
+    "action": { "type": "Click" },
+    "post_delay": 2000,
+    "next": ["角斗场商店_模拟军演", "角斗场商店_翻页"]
+  },
+  "角斗场商店_模拟军演": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [20, 20, 1240, 640],
+        "expected": ["模拟军演"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "post_delay": 2000,
+    "next": ["角斗场商店_点角斗场卡", "角斗场商店_翻页"]
+  },
+  "角斗场商店_翻页": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [1203, 675, 1, 1]
+    },
+    "max_hit": 3,
+    "post_delay": 1200,
+    "next": ["角斗场商店_模拟军演", "角斗场商店_出击"]
+  },
+  "角斗场商店_点角斗场卡": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [1000, 290, 1, 1]
+    },
+    "post_delay": 1200,
+    "next": ["角斗场商店_进角斗场"]
+  },
+  "角斗场商店_进角斗场": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Click",
+      "target": [482, 431, 1, 1]
+    },
+    "post_delay": 2500,
+    "next": ["角斗场商店_点商店兑换", "角斗场商店_进角斗场"]
+  },
+  "角斗场商店_点商店兑换": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [1020, 20, 140, 60],
+        "expected": ["商店兑换"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "Click" },
+    "max_hit": 3,
+    "post_delay": 2000,
+    "next": ["角斗场商店_就绪", "角斗场商店_点商店兑换"]
+  },
+  "角斗场商店_就绪": {
+    "recognition": {
+      "type": "OCR",
+      "param": {
+        "roi": [80, 110, 140, 50],
+        "expected": ["角斗兑换"],
+        "threshold": 0.2
+      }
+    },
+    "action": { "type": "DoNothing" },
+    "next": ["角斗场商店_购买"]
+  },
+  "角斗场商店_购买": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "store_purchase",
+        "custom_action_param": {
+          "store_key": "gladiator_shop",
+          "max_items": 20
+        }
+      }
+    },
+    "on_error": ["角斗场商店_失败"],
+    "next": ["角斗场商店_完成"]
+  },
+  "角斗场商店_失败": {
+    "recognition": { "type": "DirectHit" },
+    "action": {
+      "type": "Custom",
+      "param": {
+        "custom_action": "task_fail",
+        "custom_action_param": {
+          "reason": "角斗场商店兑换失败：购买未完成或买后余额差值与价格不符",
+          "cleanup_entry": "通用_回主界面并结束"
+        }
+      }
+    },
+    "next": []
+  },
+  "角斗场商店_完成": {
+    "next": ["通用_回主界面并结束"]
+  }
+}

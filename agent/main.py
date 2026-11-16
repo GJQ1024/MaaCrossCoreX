@@ -1,0 +1,113 @@
+import os
+import sys
+from pathlib import Path
+
+# Embedded Python does not put the script directory on sys.path.
+_agent_dir = Path(__file__).resolve().parent
+_root = _agent_dir.parent
+if str(_agent_dir) not in sys.path:
+    sys.path.insert(0, str(_agent_dir))
+if Path.cwd().resolve() != _root.resolve():
+    os.chdir(_root)
+
+from bootstrap import ensure_dependencies, prepare_runtime
+
+prepare_runtime()
+ensure_dependencies()
+
+from maa.agent.agent_server import AgentServer
+from maa.toolkit import Toolkit
+
+import my_action
+import my_reco
+import ui_common  # noqa: F401
+import ui_mask  # noqa: F401  # 注册通用遮罩/返回/滑动/确认/资源识别与动作
+import doomsday_line  # noqa: F401  # 注册 doomsday_attempts / doomsday_team_power
+import number_lt  # noqa: F401  # 注册 number_lt 自定义识别
+import alien_shop  # noqa: F401
+import alien_shop_marker  # noqa: F401  # 注册 alien_shop_check / alien_shop_mark（异星灰域周标记）  # 注册 alien_shop_item（异星灰域 名字+代币 双重核对）
+import order_fetch  # noqa: F401  # 注册 取下一单、输入当前UID
+from infra_shift import InfraManualSwapAction, InfraShiftAction
+from arena_pipeline import ArenaPipelineAction, ArenaPipelineRecognition
+from combat_autobattle import CombatAutoStateRecognition
+from chip_pipeline import ChipPipelineAction, ChipPipelineRecognition
+from chip_synth import ChipSynthAction, ChipSynthRecognition
+from daily_chip_rewards import DailyChipRewardAction, DailyChipRewardRecognition
+from activity_pipeline import ActivityPipelineAction, ActivityPipelineRecognition
+from shutdown_mumu import ShutdownMumuAction
+from daily_stamina_pipeline import DailyStaminaAction, DailyStaminaRecognition
+from limited_trade import LimitedTradeRecognition, LimitedTradeSetupAction
+from mainstory_pipeline import MainStoryAction, MainStoryRecognition
+from jdc_select_character import JdcSelectCharacter
+from jdc_build_team import JdcBuildTeam
+from jdc_route_push import JdcRoutePush
+from jdc_reset_state import JdcResetState
+from weekly_run_counter import WeeklyRunCounterAction, WeeklyRunReached
+from task_memory import TaskMemoryCompleteAction, TaskMemoryGateAction
+from resource_stats import ResourceStatsAction
+from store_purchase import StorePurchaseAction
+from mail_claim import MailClaimAction, MailClaimGateAction
+from account_switch_action import AccountSwitchAction
+import log_archive
+
+
+AgentServer.custom_action("arena_atomic")(ArenaPipelineAction)
+AgentServer.custom_recognition("arena_state")(ArenaPipelineRecognition)
+AgentServer.custom_recognition("combat_auto_state")(CombatAutoStateRecognition)
+AgentServer.custom_action("chip_atomic")(ChipPipelineAction)
+AgentServer.custom_recognition("chip_state")(ChipPipelineRecognition)
+AgentServer.custom_action("chip_synth")(ChipSynthAction)
+AgentServer.custom_recognition("chip_synth_state")(ChipSynthRecognition)
+AgentServer.custom_action("daily_chip_reward")(DailyChipRewardAction)
+AgentServer.custom_recognition("daily_chip_reward_state")(DailyChipRewardRecognition)
+AgentServer.custom_action("activity_atomic")(ActivityPipelineAction)
+AgentServer.custom_recognition("activity_state")(ActivityPipelineRecognition)
+AgentServer.custom_action("shutdown_mumu")(ShutdownMumuAction)
+AgentServer.custom_action("daily_stamina")(DailyStaminaAction)
+AgentServer.custom_recognition("daily_stamina_state")(DailyStaminaRecognition)
+AgentServer.custom_action("limited_trade_setup")(LimitedTradeSetupAction)
+AgentServer.custom_recognition("limited_trade_state")(LimitedTradeRecognition)
+AgentServer.custom_action("mainstory")(MainStoryAction)
+AgentServer.custom_recognition("mainstory_state")(MainStoryRecognition)
+AgentServer.custom_action("jdc_select_character")(JdcSelectCharacter)
+AgentServer.custom_action("jdc_build_team")(JdcBuildTeam)
+AgentServer.custom_action("jdc_route_push")(JdcRoutePush)
+AgentServer.custom_action("jdc_reset_state")(JdcResetState)
+AgentServer.custom_action("weekly_run_count")(WeeklyRunCounterAction)
+AgentServer.custom_recognition("weekly_run_reached")(WeeklyRunReached)
+AgentServer.custom_action("task_memory_gate")(TaskMemoryGateAction)
+AgentServer.custom_action("task_memory_complete")(TaskMemoryCompleteAction)
+AgentServer.custom_action("resource_stats")(ResourceStatsAction)
+AgentServer.custom_action("store_purchase")(StorePurchaseAction)
+AgentServer.custom_action("mail_claim")(MailClaimAction)
+AgentServer.custom_action("mail_claim_gate")(MailClaimGateAction)
+AgentServer.custom_action("infra_shift")(InfraShiftAction)
+AgentServer.custom_action("infra_manual_swap")(InfraManualSwapAction)
+AgentServer.custom_action("account_switch")(AccountSwitchAction)
+
+print(
+    "[agent] custom actions ready: "
+    "基建_订单群_检查配置, 取下一单, 输入当前UID, 取下一待删好友, 删除登记完成"
+)
+
+
+def main():
+    Toolkit.init_option("./")
+
+    # 失败证据归档：maafw.log 会被后续任务重建，先落盘再执行任务
+    log_archive.start(_root)
+
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <socket_id>")
+        print("socket_id is provided by AgentIdentifier.")
+        sys.exit(1)
+
+    socket_id = sys.argv[-1]
+
+    AgentServer.start_up(socket_id)
+    AgentServer.join()
+    AgentServer.shut_down()
+
+
+if __name__ == "__main__":
+    main()

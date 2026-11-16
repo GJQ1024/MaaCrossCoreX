@@ -1,0 +1,228 @@
+{
+    "芯片合成": {
+        "next": [
+            "芯片合成_初始化"
+        ]
+    },
+    "芯片合成_初始化": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "chip_synth",
+                "custom_action_param": {
+                    "operation": "init",
+                    "dry_run": false,
+                    "max_rounds": 1
+                }
+            }
+        },
+        "next": [
+            "芯片合成_状态门"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_状态门": {
+        "recognition": "Custom",
+        "custom_recognition": "chip_synth_state",
+        "custom_recognition_param": {
+            "expected": "status:ready"
+        },
+        "action": "DoNothing",
+        "next": [
+            "芯片合成_唤醒"
+        ],
+        "on_error": [
+            "芯片合成_跳过"
+        ]
+    },
+    "芯片合成_跳过": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_唤醒": {
+        "recognition": "DirectHit",
+        "action": "Click",
+        "target": [
+            1200,
+            400,
+            1,
+            1
+        ],
+        "pre_delay": 300,
+        "post_delay": 1500,
+        "max_hit": 6,
+        "next": [
+            "芯片合成_仓库图标",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_仓库图标": {
+        "recognition": "TemplateMatch",
+        "template": [
+            "芯片合成/仓库图标.png"
+        ],
+        "roi": [
+            1080,
+            0,
+            200,
+            80
+        ],
+        "threshold": 0.85,
+        "action": "Click",
+        "pre_delay": 300,
+        "post_delay": 1800,
+        "next": [
+            "芯片合成_芯片页签"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_芯片页签": {
+        "recognition": "OCR",
+        "expected": [
+            "芯片"
+        ],
+        "roi": [
+            1100,
+            18,
+            180,
+            56
+        ],
+        "action": "Click",
+        "pre_delay": 300,
+        "post_delay": 1200,
+        "max_hit": 3,
+        "next": [
+            "芯片合成_芯片页确认",
+            "芯片合成_芯片页签"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_芯片页确认": {
+        "recognition": "Custom",
+        "custom_recognition": "chip_synth_state",
+        "custom_recognition_param": {
+            "expected": "page:chip"
+        },
+        "action": "DoNothing",
+        "next": [
+            "芯片合成_工作台"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_工作台": {
+        "recognition": "OCR",
+        "expected": [
+            "工作台"
+        ],
+        "roi": [
+            1060,
+            445,
+            220,
+            95
+        ],
+        "action": "Click",
+        "pre_delay": 300,
+        "post_delay": 1500,
+        "next": [
+            "芯片合成_合成页签"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_合成页签": {
+        "recognition": "OCR",
+        "expected": [
+            "合成"
+        ],
+        "roi": [
+            0,
+            295,
+            175,
+            205
+        ],
+        "action": "Click",
+        "pre_delay": 300,
+        "post_delay": 1200,
+        "max_hit": 3,
+        "next": [
+            "芯片合成_合成页确认",
+            "芯片合成_合成页签"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_合成页确认": {
+        "recognition": "Custom",
+        "custom_recognition": "chip_synth_state",
+        "custom_recognition_param": {
+            "expected": "page:synth"
+        },
+        "action": "DoNothing",
+        "next": [
+            "芯片合成_排序"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_排序": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "chip_synth",
+                "custom_action_param": {
+                    "operation": "ensure_sort"
+                }
+            }
+        },
+        "next": [
+            "芯片合成_运行"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_运行": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "chip_synth",
+                "custom_action_param": {
+                    "operation": "run"
+                }
+            }
+        },
+        "next": [
+            "芯片合成_返回"
+        ],
+        "on_error": [
+            "芯片合成_返回"
+        ]
+    },
+    "芯片合成_返回": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "通用_回主界面并结束"
+        ]
+    }
+}
