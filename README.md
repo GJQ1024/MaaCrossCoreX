@@ -98,7 +98,7 @@
 
 源码仓库路径为 **`assets/resource/`**（不是根目录 `resource/` 镜像）。改完 pipeline / `interface.json` 后，Release 本地联调可将 `assets/` 同步到解压目录（个人脚本见 `.gitignore`，维护者自用）。
 
-**UI 定制不在本仓**：客户端壳来自 [MAACrossCore/MCCAvalonia](https://github.com/MAACrossCore/MCCAvalonia)。CI（`install.yml` 的 `MFAA_VERSION`）下载其 Release；改设置页 / 任务列表 / pretask 等请在 UI 仓改并打 tag，再 bump Framework 的版本钉。
+**UI 定制不在本仓**：客户端壳来自 [MAACrossCore/MCCAvalonia](https://github.com/MAACrossCore/MCCAvalonia)。打包时从该仓 Release 取壳，版本钉在 `tools/install.py` 的 `MFA_VERSION`；改设置页 / 任务列表 / pretask 等请在 UI 仓改并打 tag，再 bump Framework 的版本钉。
 
 * [如何开发](./docs/zh_cn/develop/how_to_develop.md)
 * [本地开发手册（MuMu + MaaDebugger）](./docs/zh_cn/develop/local_dev.md)

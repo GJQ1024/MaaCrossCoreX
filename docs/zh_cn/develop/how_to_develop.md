@@ -62,22 +62,22 @@
 
 5. 发布您的版本
 
-    本模板附带 GitHub Actions 工作流的 [配置文件](/.github/workflows/install.yml)，CI 检测到 tag 会自动进行打包和发布。默认会将 [MCCAvalonia](https://github.com/MAACrossCore/MCCAvalonia)（自有 Avalonia UI）与项目资源一同打包；版本由 `env.MFAA_VERSION` 钉定。
-
-    > [!NOTE]
-    > 第一次操作前，需要**先**修改 GitHub 仓库设置 `Settings` - `Actions` - `General` - `Read and write permissions` - `Save`
+    本仓不使用 GitHub Actions 自动打包（该 workflow 已移除），发布时在本地执行：
 
     ```bash
-    # 给最近的 commit 打上 v1.0.0 标签并推送
+    # 1. 准备壳与 Python 运行时（Windows / macOS）
+    python tools/ci/setup_embed_python.py --target-os win --target-arch x86_64
+    python tools/ci/download_deps.py --deps-dir install/deps --target-os win --target-arch x86_64
+    # 2. 组装产物
+    python tools/install.py v1.0.0 win x86_64
+    # 3. 打 tag（可选，与产物版本号无关）
     git tag v1.0.0
     git push origin v1.0.0
     ```
 
-    执行上述命令后，CI 会自动进行打包和发布，你可以在项目仓库的 `Actions` 页面中看到工作流的执行情况。如果一切顺利，运行结束后你可以在项目仓库的 `Releases` 页面中看到新发布的版本。更多有关 GitHub Actions 的内容请参考 [GitHub Actions 文档](https://docs.github.com/zh/actions)。
+    打好的目录自行压成 zip，再手动上传到本仓 `Releases`。
 
-    _若要换用别的 [通用 UI](https://github.com/MaaXYZ/MaaFramework/#%E9%80%9A%E7%94%A8-ui)，请改 `install.yml` 里的 `repository` / `MFAA_VERSION`。_
-
-    本仓库 CI 在 Windows / macOS 打包前还会：
+    打包前还会：
 
     - 运行 `tools/ci/setup_embed_python.py` 生成 `install/python/`
     - 运行 `tools/ci/download_deps.py` 下载 Agent wheel 到 `install/deps/`

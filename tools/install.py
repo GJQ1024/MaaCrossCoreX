@@ -48,7 +48,7 @@ DEFAULT_MFA_DIRS = (
     working_dir / "MFA",
 )
 
-# 模式 B 整包采用 GPL-3.0；壳来源与版本与 CI 一致（.github/workflows/install.yml）。
+# 模式 B 整包采用 GPL-3.0；壳来源与版本由此处钉定（打包与 NOTICE 同源）。
 MFA_SOURCE_REPO = "https://github.com/MAACrossCore/MCCAvalonia"
 MFA_VERSION = "v0.1.3"
 # 我们自己的源码仓库（与壳来源不同，不要混用）。
@@ -418,8 +418,8 @@ def _resolve_mfa_dir() -> Path | None:
 def install_shell() -> None:
     """模式 B：把 MFAAvalonia 壳复制进产物。
 
-    复用 CI 的做法（.github/workflows/install.yml）：从 Release 下载的 MFA 目录
-    直接 rsync 进 install/。这里用本地已有的壳副本（gui-eval/MFA 或 --mfa-dir）。
+    从 MFA Release 下载解压后的目录直接 rsync 进 install/。
+    这里用本地已有的壳副本（gui-eval/MFA 或 --mfa-dir）。
     """
     mfa_dir = _resolve_mfa_dir()
     if mfa_dir is None:

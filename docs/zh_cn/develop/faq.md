@@ -18,7 +18,7 @@ Win10 或者 Win11 系统自带了一份 "Python"，但它其实只是一个安�
 
 ## 3. 我应该如何打包我的项目？
 
-你需要按照项目推荐的 [开发流程](./how_to_develop.md) 发布一个版本，[CI](/.github/workflows/install.yml) 会自动完成打包工作。具体的工作方式请参考 [GitHub Actions 文档](https://docs.github.com/zh/actions)。
+本仓不提供自动打包 CI，请按照 [开发流程](./how_to_develop.md) 在本地用 `tools/install.py` 组装产物，再手动压包上传到 `Releases`。
 
 ## 4. 我在这个仓库里提了 Issue 很久没人回复
 

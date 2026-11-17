@@ -1,4 +1,4 @@
-# 必须与 .github/workflows/install.yml 的 MAAFW_VERSION 对齐（去掉 v 前缀），
+# 必须与随包分发的 MaaFramework 原生库版本对齐（去掉 v 前缀），
 # 并与 MFA 壳实际加载的 MaaFramework 原生库一致（当前 5.14.3），
 # 否则 AgentClient/AgentServer 协议不兼容（实测 5.12.3 绑定 + 5.14.3 原生会
 # 报 Protocol version mismatch 并让整个连接任务失败）。
