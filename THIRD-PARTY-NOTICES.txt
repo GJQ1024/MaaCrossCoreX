@@ -14,10 +14,10 @@ MaaCrossCoreX 第三方组件与许可声明
    libs/ 下的壳程序集）
    许可：GNU General Public License v3.0（全文见包根 LICENSE）
    源码：https://github.com/GJQ1024/MaaCrossCoreX-Shell
-   对应标签：shell-v0.1.232-mccx.2
-   对应提交：d245ae5dd8665e0a8d8ffde2051f2d8f540cd525
+   对应标签：shell-v0.1.232-mccx.3
+   对应提交：789d016c2f7b4c3453952f7312e76fb743782206
    核心程序集：libs/MFAAvalonia.Core.dll
-   SHA256：29560E2A4C5F4AE680A8FD102F06184656F7B59A12C400DBAB2BBE7D9CA9069B
+   SHA256：02F310F28C13A2937B647ED1DB9B3E3ADC93A9825B708852C89683EFEEF0A731
    基于上游 MFAAvalonia（https://github.com/SweetSmellFox/MFAAvalonia ，GPL-3.0）修改。
    修改内容与完整历史见上述源码仓库。
 
