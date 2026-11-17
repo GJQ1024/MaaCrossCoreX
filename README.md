@@ -22,8 +22,8 @@
 
 ## 使用方式
 
-0. 从 [Releases](https://github.com/GJQ1024/MaaCrossCoreX-Shell/releases) 下载 Windows 包（当前主线 **v1.0.0**，以 Releases 页最新 tag 为准），例如：  
-   `MaaCrossCoreX-v1.0.0-B-win-x64.zip`
+0. 从 [Releases](https://github.com/GJQ1024/MaaCrossCoreX/releases) 下载 Windows 包（当前主线 **v1.0.4**，以 Releases 页最新 tag 为准），例如：  
+   `MaaCrossCoreX-win-x64-v1.0.4.zip`
 1. 解压压缩包
 2. **Windows / macOS 正式包已内置便携 Python**（解压目录下的 `python/`）和离线依赖包（`deps/`）。首次运行带 Agent 的任务时，`agent/bootstrap.py` 会从 `deps/` 自动安装 `maafw` 等依赖，**一般无需本机安装 Python**。  
    若仍报错，可双击 `Install-Agent-Deps.bat`（Windows）手动重装 Agent 依赖。  
