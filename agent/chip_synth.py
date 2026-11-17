@@ -386,7 +386,7 @@ class _Synth:
         self.options = options
         self.report = {
             "run_id": self.dir.name,
-            "device_expected": "127.0.0.1:16416",
+            "device_expected": "",
             "mode": "DRY RUN" if dry_run else "REAL",
             "dry_run": dry_run,
             "options": options,

@@ -22,7 +22,14 @@ _STARTED_AT = time.monotonic()
 # 壳自带的嵌入式 Python 用 python312._pth 固定 sys.path，不会自动加上脚本目录，
 # 不显式插就 import 不到同目录模块（2026-11-11 上机 pretask 因此退出码 1）。
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from device_identity import filter_by_target, pick_entry, target_android_id  # noqa: E402
+from device_identity import (  # noqa: E402
+    CONFIG_FILE as IDENTITY_FILE,
+    clear_saved_target,
+    filter_by_target,
+    pick_entry,
+    save_target_android_id,
+    target_android_id,
+)
 
 
 def elapsed():
@@ -463,7 +470,7 @@ def index_for_serial(manager, serial):
     """按 ADB serial 反查 MuMu 实例编号。
 
     配置里的 extras.mumu.index 不可信：历史上它与实际 AdbSerial 不一致过
-    （serial 是 JCZX 的 16416，index 却还是 AzurLane 的 0），壳存盘时会把
+    （serial 是 <实例> 的 <port>，index 却还是 <其它实例> 的 0），壳存盘时会把
     错误编号继续传下去。端口只是运行时地址，serial→index 的唯一权威是
     MuMuManager info；这里只做反查，不推导、不猜。
     """
@@ -498,12 +505,19 @@ def adb_package_hit(adb, serial):
 
 
 def adb_android_id(adb, serial):
-    """读取设备的 android_id；取不到返回空串。只读查询。"""
+    """读取设备的 android_id；取不到返回空串。只读查询。
+
+    部分机型/未授权状态下 `settings get secure android_id` 会返回字面量
+    unknown/null，这些同样视为「取不到」，不能拿去和目标 id 比较。
+    """
     code, output, _ = run(
         [adb, "-s", serial, "shell", "settings", "get", "secure", "android_id"],
         timeout=12,
     )
-    return output.strip() if code == 0 else ""
+    if code != 0:
+        return ""
+    value = output.strip()
+    return "" if value.lower() in ("", "unknown", "null", "none") else value
 
 
 class TargetResolutionError(Exception):
@@ -518,35 +532,78 @@ class AmbiguousTarget(TargetResolutionError):
     """≥2 台目标设备，身份歧义。"""
 
 
+class IdentityUnavailable(TargetResolutionError):
+    """读不到 android_id（空/unknown/命令失败），不能当成「读到但不匹配」。"""
+
+
+def rebind_requested():
+    """--rebind 或 MFA_REBIND=1：清掉自动绑定的 android_id，按当前在线设备重新绑定。"""
+    env_switch = os.environ.get("MFA_REBIND", "").strip().lower() in ("1", "true", "yes")
+    return env_switch or "--rebind" in sys.argv[1:]
+
+
 def resolve_adb_target(adb, preferred_serial=""):
     """按目标 android_id + 游戏包唯一识别目标设备。
 
-    身份锚点与 binder 完全一致（device_identity.target_android_id()）：先按目标
-    android_id 过滤候选，真机等非目标设备静默滤掉、只在日志留一行摘要；
-    过滤后再去重与歧义判断。0 台、≥2 个不同 id 时抛 TargetResolutionError 的子类；
-    调用方必须硬失败，不允许按 adb 顺序或实例编号自动挑一台。
+    身份锚点与 binder 完全一致（device_identity.target_android_id()：环境变量 >
+    config/device_identity.json > 空）。未配置目标时，若「唯一一台装了游戏的在线
+    设备」能读到 android_id，则自动绑定并持久化，后续启动直接复用。
+    先按目标 android_id 过滤候选，真机等非目标设备只在日志留一行摘要（带实际读到的
+    值）；过滤后再去重与歧义判断。0 台、≥2 个不同 id 时抛 TargetResolutionError
+    的子类；调用方必须硬失败，不允许按 adb 顺序或实例编号自动挑一台。
     """
     devices = adb_devices(adb)
     online = [serial for serial, state in devices.items() if state == "device"]
-    # 非目标设备不逐台打日志，只保留「在线台数」与过滤摘要
     log(f"[身份] 包名={GAME_PACKAGE}；在线设备 {len(online)} 台")
     with_game = []
+    unreadable = []
     for serial in online:
         if not adb_package_hit(adb, serial):
             log(f"[身份] 候选 {serial} → 无 {GAME_PACKAGE}，跳过")
             continue
-        # 非目标设备不逐台打日志：只在下面留一行过滤摘要
-        with_game.append((serial, adb_android_id(adb, serial) or ""))
+        aid = adb_android_id(adb, serial) or ""
+        if not aid:
+            unreadable.append(serial)
+            log(
+                f"[身份] 候选 {serial} 装了 {GAME_PACKAGE}，"
+                "但取不到 android_id（空/unknown/命令失败）"
+            )
+        with_game.append((serial, aid))
 
     target = target_android_id()
-    candidates, dropped = filter_by_target(with_game)
+    if not target:
+        readable = [(serial, aid) for serial, aid in with_game if aid]
+        if len(with_game) == 1 and len(readable) == 1:
+            serial, aid = readable[0]
+            if save_target_android_id(aid):
+                target = aid
+                log(
+                    f"[身份] 未配置目标 android_id，已自动绑定 {serial} → android_id={aid}"
+                    f"（写入 {IDENTITY_FILE}；需要重新绑定请加 --rebind）"
+                )
+            else:
+                log("[身份] 未配置目标 android_id，自动绑定失败，本次不做指纹过滤")
+        elif len(with_game) > 1:
+            log("[身份] 未配置目标 android_id：不做指纹过滤，多台设备将按歧义规则停止")
+        elif not with_game:
+            log(f"[身份] 未配置目标 android_id：没有装了 {GAME_PACKAGE} 的在线设备")
+        else:
+            log("[身份] 未配置目标 android_id：候选设备取不到 android_id，本次不做指纹绑定")
+
+    candidates, dropped = filter_by_target(with_game, target)
+    detail = "、".join(f"{serial}={aid or '取不到'}" for serial, aid in with_game)
     if dropped:
-        log(f"[身份] 目标 android_id={target}：过滤掉 {dropped} 台非目标设备（不参与判定）")
+        log(f"[身份] 目标 android_id={target}：过滤掉 {dropped} 台非目标设备（{detail}），不参与判定")
     for serial, aid in candidates:
         log(f"[身份] 目标设备 {serial} → android_id={aid or '（取不到）'}")
     if not candidates:
-        log(f"[身份] 目标 android_id={target} 未匹配到设备，停止（不自动挑）")
-        raise NoTarget(f"目标 android_id={target} 未匹配到设备")
+        if unreadable:
+            # 读不到指纹 ≠ 读到了但不是目标：分别报，便于用户判断是换机还是 adb 异常
+            raise IdentityUnavailable(
+                f"目标 android_id={target}；有设备取不到 android_id（{detail}），"
+                "不能判定为不匹配（可能是未授权、adb shell 失败或系统返回 unknown）"
+            )
+        raise NoTarget(f"目标 android_id={target} 未匹配到设备（实际读到：{detail or '无候选设备'}）")
 
     groups: dict[str, list[str]] = {}
     for serial, aid in candidates:
@@ -764,6 +821,16 @@ def main():
     if os.name != "nt":
         log("MuMu 12 自动启动目前仅支持 Windows")
         return EXIT_FAIL
+
+    if rebind_requested():
+        cleared = clear_saved_target()
+        log(
+            f"[身份] --rebind：已清除自动绑定 {IDENTITY_FILE}"
+            if cleared
+            else f"[身份] --rebind：清除自动绑定失败 {IDENTITY_FILE}，将按当前在线设备重新识别"
+        )
+        if os.environ.get("MFA_TARGET_ANDROID_ID", "").strip():
+            log("[身份] --rebind：环境变量 MFA_TARGET_ANDROID_ID 仍优先，自动绑定不会生效")
 
     settings = runtime_settings(instance)
     saved = saved_connection(instance)
