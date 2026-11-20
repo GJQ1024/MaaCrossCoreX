@@ -14,6 +14,7 @@
     },
     "异星灰域购买": {
         "next": [
+            "异星灰域_资源前",
             "异星灰域_本周已完成",
             "[JumpBack]子任务_关闭公告",
             "[JumpBack]子任务_获得物品",
@@ -25,6 +26,28 @@
         "$__mpe_code": {
             "position": {
                 "x": 60,
+                "y": 80
+            }
+        }
+    },
+    "异星灰域_资源前": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "ShopPurchase", "phase": "before" },
+        "next": [
+            "异星灰域_本周已完成",
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_获得物品",
+            "异星灰域_点异星灰域页签",
+            "异星灰域_点万物贸易所",
+            "异星灰域_进补给站",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：进异星灰域前在主界面拍资源快照",
+        "$__mpe_code": {
+            "position": {
+                "x": -200,
                 "y": 80
             }
         }
@@ -166,9 +189,62 @@
         "action": {
             "type": "DoNothing"
         },
+        "next": [
+            "异星灰域_回主界面"
+        ],
         "$__mpe_code": {
             "position": {
                 "x": 1660,
+                "y": 280
+            }
+        }
+    },
+    "异星灰域_回主界面": {
+        "next": [
+            "异星灰域_确认主界面读资源",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 60000,
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：异星灰域商店界面读不到顶栏资源，先回主界面再拍 after",
+        "$__mpe_code": {
+            "position": {
+                "x": 1920,
+                "y": 280
+            }
+        }
+    },
+    "异星灰域_确认主界面读资源": {
+        "recognition": "OCR",
+        "expected": ["补给站"],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": ["异星灰域_资源后"],
+        "on_error": ["异星灰域_资源后"],
+        "next_doc": "2026-11-15 资源统计接入：确认回主界面后读资源；确认失败也尝试读一次，读不到记 null，不阻断收尾",
+        "$__mpe_code": {
+            "position": {
+                "x": 2180,
+                "y": 280
+            }
+        }
+    },
+    "异星灰域_资源后": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "ShopPurchase", "phase": "after" },
+        "next": ["通用_回主界面并结束"],
+        "on_error": ["通用_回主界面并结束"],
+        "next_doc": "2026-11-15 资源统计接入：任务结束拍 after，随后交给通用收尾",
+        "$__mpe_code": {
+            "position": {
+                "x": 2440,
                 "y": 280
             }
         }

@@ -31,7 +31,7 @@ for extra in (str(ROOT / "agent"), str(ROOT / "tools")):
 
 import numpy as np  # noqa: E402
 
-from maa.controller import AdbController  # noqa: E402
+from maa.controller import CustomController  # noqa: E402
 from maa.resource import Resource  # noqa: E402
 from maa.tasker import Tasker  # noqa: E402
 
@@ -134,17 +134,47 @@ def read_png(path: Path) -> np.ndarray:
     return np.ascontiguousarray(pixels)
 
 
-def build_tasker(adb, serial):
+class ImageController(CustomController):
+    """把本地 PNG 当作设备画面喂给 MaaFW。
+
+    Tasker 的识别只读控制器给的截图；原先绑 AdbController 时读的是实时画面，
+    传进来的 PNG 仅用于算坐标，所以不同图片会得到同一份结果。
+    """
+
+    def __init__(self, image):
+        self._image = image
+        super().__init__()
+
+    def set_image(self, image):
+        self._image = image
+
+    def connect(self): return True
+    def request_uuid(self): return "ocr-screenshot"
+    def start_app(self, intent): return True
+    def stop_app(self, intent): return True
+    def screencap(self): return self._image
+    def click(self, x, y): return True
+    def swipe(self, x1, y1, x2, y2, duration): return True
+    def touch_down(self, contact, x, y, pressure): return True
+    def touch_move(self, contact, x, y, pressure): return True
+    def touch_up(self, contact): return True
+    def click_key(self, keycode): return True
+    def input_text(self, text): return True
+    def key_down(self, keycode): return True
+    def key_up(self, keycode): return True
+
+
+def build_tasker(image):
     resource = Resource()
     if not resource.post_bundle(INSTALL / "resource").wait().succeeded:
         raise SystemExit("加载 install/resource 失败")
-    controller = AdbController(str(adb), serial, agent_path=INSTALL / "libs" / "MaaAgentBinary")
+    controller = ImageController(image)
     if not controller.post_connection().wait().succeeded:
-        raise SystemExit("连接模拟器失败：%s" % serial)
+        raise SystemExit("初始化离线截图控制器失败")
     tasker = Tasker()
     if not tasker.bind(resource, controller) or not tasker.inited:
         raise SystemExit("Tasker 初始化失败")
-    return tasker
+    return tasker, controller
 
 
 def probe(tasker, image, roi):
@@ -196,20 +226,21 @@ def main(argv=None) -> int:
     temp.mkdir(parents=True, exist_ok=True)
     Tasker.set_log_dir(temp / "maa-log")
 
-    adb = resolve_adb(args.adb)
-    serial = resolve_serial(adb, args.serial)
-    tasker = build_tasker(adb, serial)
-
     images = [Path(p) for p in args.images]
     if not images:
+        adb = resolve_adb(args.adb)
+        serial = resolve_serial(adb, args.serial)
         out = ROOT / "debug" / "captures" / "screen_now.png"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(capture(adb, serial))
         print("现截一张：%s %s" % (out, png_size(out.read_bytes())))
         images = [out]
 
-    for path in images:
-        image = read_png(path)
+    frames = [read_png(path) for path in images]
+    tasker, controller = build_tasker(frames[0])
+
+    for path, image in zip(images, frames):
+        controller.set_image(image)
         height, width = image.shape[:2]
         roi = args.roi or [0, 0, width, height]
         rows = probe(tasker, image, roi)

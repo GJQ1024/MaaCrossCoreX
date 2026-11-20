@@ -3,6 +3,7 @@ import logging
 import time
 from pathlib import Path
 
+import diag
 import tutorial_state
 from chip_build_select import ChipFilterSelectAction, ChipNoTargetAction
 from maa.agent.agent_server import AgentServer
@@ -164,12 +165,14 @@ class VerifiedClickAction(CustomAction):
     custom_action_param:
       target_offset: [dx, dy]   相对识别框左上角的偏移；缺省为识别框中心
       target:        [x, y]     可选，绝对坐标（仅遗留节点使用）
+      verify_roi_offset: [dx, dy, w, h]  复核区域相对识别框（优先于 verify_roi）
       verify_roi:    [x, y, w, h]  复核区域，默认全屏
       verify:        {"gone": ["文本", ...]}  全部消失即生效
       verify_change: true       或：verify_roi 画面变化即生效
       change_threshold: 5.0     画面变化的平均像素差阈值（0-255）
       retries:       1          未生效时的补充点击次数
       delay:         0.9        点击后到复核的等待秒数
+      on_fail:       ["节点", ...]  重试耗尽后的改道兜底（失败已记 diag，不判整任务失败）
       reason:        日志标签
     """
 
@@ -199,8 +202,35 @@ class VerifiedClickAction(CustomAction):
     @staticmethod
     def _roi_snapshot(context, roi):
         image = context.tasker.controller.post_screencap().wait().get()
+        height, width = image.shape[:2]
         x, y, w, h = [int(v) for v in roi]
-        return image[y:y + h, x:x + w].astype("int16").copy()
+        x, y = max(0, min(x, width - 1)), max(0, min(y, height - 1))
+        w, h = max(1, w), max(1, h)
+        return image[y:min(y + h, height), x:min(x + w, width)].astype("int16").copy()
+
+    def _resolve_verify_roi(self, param, box, reason):
+        """复核区域：verify_roi_offset（相对识别框）> verify_roi > 全屏。
+
+        P-111：基建资源点的复核区必须跟着识别框走。写死 verify_roi 时，
+        资源点整体平移后复核的是旧位置，会把「没点到」误判成「领到了」。
+        """
+        offset = param.get("verify_roi_offset")
+        if offset:
+            if not (box and (box[2] or box[3])):
+                log.error("复核点击[%s] 给了 verify_roi_offset 但没有识别框", reason)
+                return None
+            roi = [
+                box[0] + int(offset[0]),
+                box[1] + int(offset[1]),
+                int(offset[2]),
+                int(offset[3]),
+            ]
+        elif param.get("verify_roi"):
+            roi = [int(v) for v in param["verify_roi"]]
+        else:
+            roi = [0, 0, 1280, 720]
+        x, y, w, h = roi
+        return [max(0, x), max(0, y), max(1, w), max(1, h)]
 
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         raw = getattr(argv, "custom_action_param", None) or "{}"
@@ -216,9 +246,9 @@ class VerifiedClickAction(CustomAction):
         reason = str(param.get("reason") or argv.node_name)
         retries = max(0, int(param.get("retries") or 0))
         delay = float(param.get("delay") or 0.9)
-        verify_roi = list(param.get("verify_roi") or [0, 0, 1280, 720])
         gone = [str(item) for item in ((param.get("verify") or {}).get("gone") or [])]
         change_threshold = float(param.get("change_threshold") or 5.0)
+        on_fail = [str(item) for item in (param.get("on_fail") or [])]
 
         box = getattr(argv, "box", None)
         if param.get("target"):
@@ -229,6 +259,10 @@ class VerifiedClickAction(CustomAction):
             y = int(box[1] + offset[1])
         else:
             log.error("复核点击[%s] 无可用点击坐标（识别框为空且未给 target）", reason)
+            return False
+
+        verify_roi = self._resolve_verify_roi(param, box, reason)
+        if verify_roi is None:
             return False
 
         def effective(before):
@@ -256,7 +290,21 @@ class VerifiedClickAction(CustomAction):
             log.warning("复核点击[%s] 第%d次未生效 @(%d,%d) %s", reason, attempt, x, y, detail)
             if not gone and attempt < attempts:
                 before = self._roi_snapshot(context, verify_roi)
-        log.error("复核点击[%s] 重试 %d 次仍未生效，判失败 @(%d,%d)", reason, retries, x, y)
+        log.error(
+            "复核点击[%s] 重试 %d 次仍未生效 @(%d,%d) box=%s roi=%s %s",
+            reason, retries, x, y, list(box) if box is not None else None, verify_roi, detail,
+        )
+        diag.fail(
+            "复核点击[%s]" % reason,
+            actual="点击 %d 次后复核区无变化 @(%d,%d) box=%s roi=%s（%s）" % (
+                attempts, x, y, list(box) if box is not None else None, verify_roi, detail,
+            ),
+            expect="点击后目标区域发生变化",
+        )
+        if on_fail:
+            log.error("复核点击[%s] 走兜底改道：%s", reason, " → ".join(on_fail))
+            context.override_next(argv.node_name, list(on_fail))
+            return True
         return False
 
 

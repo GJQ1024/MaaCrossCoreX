@@ -49,20 +49,26 @@ RESOURCES = {
     "ap": {
         "label": "体力",
         "template": "HomeResourceAp.png",
-        # 图标右侧紧邻 current/max 文本，如 "201/240"
-        "ocr_offset": (35, -4, 120, 33),
+        # 图标右侧紧邻 current/max 文本，如 "340/240"；ROI 需完整覆盖到末位数字，
+        # 也不能把图标本体和右上角「+」徽标圈进来（旧值 35/120 会裁掉末位 0 导致 OCR 失败）
+        "ocr_offset": (58, -6, 120, 40),
+        "fixed_roi": (534, 32, 110, 28),
+        # 体力是 "当前/上限" 复合串，命中该格式即基本可确认；描边字在部分帧置信度会降到 0.8 附近
+        "min_confidence": 0.6,
         "parser": "parse_ap",
     },
     "coin": {
         "label": "金币",
         "template": "HomeResourceCoin.png",
         "ocr_offset": (37, -4, 133, 33),
+        "fixed_roi": (700, 32, 95, 28),
         "parser": "parse_int",
     },
     "gem": {
         "label": "粲晶",
         "template": "HomeResourceGem.png",
-        "ocr_offset": (35, -4, 107, 33),
+        "ocr_offset": (35, -6, 120, 40),
+        "fixed_roi": (882, 32, 70, 28),
         "parser": "parse_int",
     },
 }
@@ -184,7 +190,7 @@ def _match_icon(context: Context, image, template_name: str) -> tuple[int, int, 
             "recognition": "TemplateMatch",
             "template": template_name,
             "roi": [0, 0, CANVAS_W, 120],  # 顶栏区域（1280x720 画布）
-            "threshold": 0.7,
+            "threshold": 0.6,
         }
     }
     detail = context.run_recognition(node, image, pipeline_override=override)
@@ -217,9 +223,32 @@ def read_resources(context: Context, image) -> dict[str, ResourceReading]:
     readings: dict[str, ResourceReading] = {}
     for key, spec in RESOURCES.items():
         reading = ResourceReading(resource=key, label=spec["label"], value=None)
+        min_score = spec.get("min_confidence", CONFIDENCE_THRESHOLD)
         icon_box = _match_icon(context, image, spec["template"])
         if icon_box is None:
-            log.debug("资源 %s 图标未匹配到", spec["label"])
+            # 图标模板带动态背景，偶发匹配失败；主界面顶栏位置固定，用固定 ROI 兜底
+            fallback = spec.get("fixed_roi")
+            if fallback is None:
+                log.debug("资源 %s 图标未匹配到", spec["label"])
+                readings[key] = reading
+                continue
+            log.info("资源 %s 图标未匹配到，改用固定 ROI %s", spec["label"], fallback)
+            reading.ocr_box = list(fallback)
+            text, score, ocr_box = _ocr_number(context, image, list(fallback))
+            reading.raw = text
+            reading.confidence = score
+            reading.ocr_box = ocr_box or list(fallback)
+            if text is None or score is None or score < min_score:
+                log.info("资源 %s OCR 失败：text=%r score=%s", spec["label"], text, score)
+                readings[key] = reading
+                continue
+            value = _PARSERS[spec["parser"]](text)
+            if value is None:
+                log.info("资源 %s 数字解析失败：text=%r", spec["label"], text)
+                readings[key] = reading
+                continue
+            reading.value = value
+            reading.success = True
             readings[key] = reading
             continue
         reading.icon_box = list(icon_box)
@@ -231,7 +260,7 @@ def read_resources(context: Context, image) -> dict[str, ResourceReading]:
         reading.raw = text
         reading.confidence = score
         reading.ocr_box = ocr_box
-        if text is None or score is None or score < CONFIDENCE_THRESHOLD:
+        if text is None or score is None or score < min_score:
             log.info("资源 %s OCR 失败：text=%r score=%s", spec["label"], text, score)
             readings[key] = reading
             continue

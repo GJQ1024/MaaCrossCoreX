@@ -52,7 +52,7 @@
         "next": [
             "领奖_回主界面"
         ],
-        "next_doc": "2026-11-02 任务记忆接入：完成记录挂在《通行证_结束》之后（三段全部走完的唯一出口），然后回主界面读资源"
+        "next_doc": "2026-11-02 任务记忆接入：完成记录挂在所有领取段之后的唯一出口；2026-11-21 合并后为 邮箱 → 每日 → 通行证 → 每日免费礼包，然后回主界面读资源"
     },
 
     "领奖_回主界面": {
@@ -732,8 +732,187 @@
     "通行证_结束": {
         "action": "DoNothing",
         "next": [
+            "领奖_免费礼包段"
+        ],
+        "next_doc": "2026-11-21 合并：通行证领完后接商店每日免费礼包段，再写记忆完成/回主界面读资源（资源统计必须在主界面才能读到顶栏）"
+    },
+
+    "领奖_免费礼包段": {
+        "timeout": 120000,
+        "next": [
+            "[JumpBack]子任务_关闭公告",
+            "[JumpBack]子任务_关闭周年公告",
+            "礼包_每日免费",
+            "补给站_进入",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "on_error": [
+            "领奖_免费礼包跳过"
+        ],
+        "next_doc": "2026-11-21 合并：原《商店购买_每日免费礼包》作为领取奖励的内部步骤，排在邮箱/每日/通行证之后；本段失败只跳过，不影响已完成的领取。链路沿用 3.3.1 实机验证节点"
+    },
+
+    "领奖_免费礼包跳过": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_skip",
+        "custom_action_param": {
+            "reason": "每日免费礼包：入口/礼包页未就绪或免费状态未确认，未购买，跳过本段继续收尾"
+        },
+        "next": [
             "领奖_记忆完成"
         ],
-        "next_doc": "2026-11-02 资源统计接入：先写记忆完成，再回主界面，最后读资源差值（资源统计必须在主界面才能读到顶栏）"
+        "next_doc": "付费闸只允许朝「不买」方向失败：不点购买、不点确认，记 WARNING 后继续收尾"
+    },
+
+    "补给站_进入": {
+        "recognition": "OCR",
+        "expected": [
+            "补给站"
+        ],
+        "roi": [1008, 593, 111, 118],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "max_hit": 5,
+        "next": [
+            "礼包_每日免费",
+            "补给站_进入"
+        ],
+        "next_doc": "2026-11-02 假成功整治：自转无界时若反复点击不进商店会死循环；max_hit=5 封顶"
+    },
+
+    "礼包_每日免费": {
+        "recognition": "OCR",
+        "expected": [
+            "礼包"
+        ],
+        "roi": [20, 325, 203, 81],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 2000,
+        "next": [
+            "礼包_免费",
+            "礼包_已领取",
+            "礼包_退出"
+        ]
+    },
+
+    "礼包_免费": {
+        "recognition": "OCR",
+        "expected": "免费",
+        "roi": [255, 580, 990, 68],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1000,
+        "next": [
+            "礼包_价格闸",
+            "礼包_免费确认"
+        ],
+        "on_error": [
+            "礼包_未确认免费"
+        ],
+        "next_doc": "2026-11-04 付费闸 fail-closed：出现价格→退出；无价格也必须由「礼包_免费确认」阳性识别到「免费」才允许购买；两闸都判不出→不购买并跳过"
+    },
+
+    "礼包_价格闸": {
+        "recognition": "OCR",
+        "expected": ["¥", "$", "元", "充值"],
+        "roi": [700, 480, 340, 130],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "DoNothing",
+        "next": [
+            "礼包_退出"
+        ],
+        "on_error": [
+            "礼包_未确认免费"
+        ],
+        "next_doc": "2026-11-03 价格否定闸：按钮区域出现 ¥/$/元/充值 时退出（不买）；判不出价格同样不购买"
+    },
+
+    "礼包_免费确认": {
+        "recognition": "OCR",
+        "expected": ["免费"],
+        "roi": [700, 480, 340, 130],
+        "timeout": 10000,
+        "action": "DoNothing",
+        "next": [
+            "礼包_购买"
+        ],
+        "on_error": [
+            "礼包_未确认免费"
+        ],
+        "next_doc": "2026-11-04 付费闸阳性确认：价格闸判不出价格后，必须再识别到「免费」才继续点购买；识别不到即不买"
+    },
+
+    "礼包_未确认免费": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_skip",
+        "custom_action_param": {
+            "reason": "每日免费礼包：价格闸既未确认价格也未确认免费，拒绝购买，跳过本段"
+        },
+        "next": [
+            "领奖_记忆完成"
+        ],
+        "next_doc": "2026-11-21 合并：保留 fail-closed（绝不点购买），但不让礼包段的不确定状态拖垮整条领取奖励，记 WARNING 后继续收尾"
+    },
+
+    "礼包_购买": {
+        "recognition": "OCR",
+        "expected": [
+            "购买"
+        ],
+        "roi": [758, 513, 191, 75],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "Click",
+        "post_delay": 1000,
+        "next": [
+            "[JumpBack]子任务_获得物品",
+            "礼包_退出"
+        ],
+        "next_doc": "免费礼包的购买确认按钮；点击识别框中心，替代上游绝对坐标 target"
+    },
+
+    "礼包_已领取": {
+        "recognition": "TemplateMatch",
+        "template": "StartUp/NoForFree.png",
+        "roi": [200, 620, 200, 100],
+        "pre_wait_freezes": {
+            "time": 1000,
+            "threshold": 0.95
+        },
+        "timeout": 10000,
+        "action": "DoNothing",
+        "next": [
+            "礼包_退出"
+        ],
+        "next_doc": "今日免费礼包已领：免费礼包从列表消失，第一位变为付费礼包（¥6），以付费价格符号作为已领取锚点（模板 2026-11-01 实机重裁，匹配 1.000）"
+    },
+
+    "礼包_退出": {
+        "next": [
+            "领奖_记忆完成"
+        ],
+        "next_doc": "2026-11-21 合并：礼包段结束直接进入记忆完成，资源差值由领取奖励任务级 before/after 统计"
     }
 }

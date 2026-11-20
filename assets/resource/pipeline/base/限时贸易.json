@@ -3,6 +3,7 @@
         "action": "Custom",
         "custom_action": "limited_trade_setup",
         "next": [
+            "限时贸易_资源前",
             "[JumpBack]子任务_关闭公告",
             "Buyit",
             "LimitedStoreReady",
@@ -10,6 +11,21 @@
             "Shop1",
             "[JumpBack]子任务_进入首页"
         ]
+    },
+    "限时贸易_资源前": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "ShopPurchase", "phase": "before" },
+        "next": [
+            "[JumpBack]子任务_关闭公告",
+            "Buyit",
+            "LimitedStoreReady",
+            "time_limited",
+            "Shop1",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：进限时贸易所前在主界面拍资源快照"
     },
     "LimitedStoreReady": {
         "recognition": "OCR",
@@ -91,7 +107,8 @@
         "custom_recognition": "limited_trade_state",
         "custom_recognition_param": {"expected": "coin_below_floor"},
         "action": "DoNothing",
-        "focus": "当前星币低于设置下限，未购买任何物品，任务正常结束"
+        "focus": "当前星币低于设置下限，未购买任何物品，任务正常结束",
+        "next": ["限时贸易_回主界面"]
     },
     "LimitedTradeProductOCR": {
         "recognition": "OCR",
@@ -235,6 +252,7 @@
         "custom_recognition_param": {"expected": "done"},
         "action": "DoNothing",
         "focus": "限时贸易所购买任务完成，停留在补给站",
+        "next": ["限时贸易_回主界面"],
         "$__mpe_code": {
             "position": {
                 "x": 980,
@@ -242,11 +260,42 @@
             }
         }
     },
+    "限时贸易_回主界面": {
+        "next": [
+            "限时贸易_确认主界面读资源",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 60000,
+        "on_error": ["重连网络"],
+        "next_doc": "2026-11-15 资源统计接入：补给站界面读不到顶栏资源，先回主界面再拍 after"
+    },
+    "限时贸易_确认主界面读资源": {
+        "recognition": "OCR",
+        "expected": ["补给站"],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": ["限时贸易_资源后"],
+        "on_error": ["限时贸易_资源后"],
+        "next_doc": "2026-11-15 资源统计接入：确认回主界面后读资源；确认失败也尝试读一次，读不到记 null，不阻断收尾"
+    },
+    "限时贸易_资源后": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "ShopPurchase", "phase": "after" },
+        "next": ["通用_回主界面并结束"],
+        "on_error": ["通用_回主界面并结束"],
+        "next_doc": "2026-11-15 资源统计接入：任务结束拍 after，随后交给通用收尾"
+    },
     "限时贸易所购买_无可购完成": {
         "recognition": "Custom",
         "custom_recognition": "limited_trade_state",
         "custom_recognition_param": {"expected": "no_items"},
         "action": "DoNothing",
-        "focus": "当前无符合要求物品，未执行购买操作"
+        "focus": "当前无符合要求物品，未执行购买操作",
+        "next": ["限时贸易_回主界面"]
     }
 }

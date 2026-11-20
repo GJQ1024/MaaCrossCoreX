@@ -14,13 +14,12 @@ from navigation import BACK_BUTTON, main_control_point
 from stop_guard import ActionStopped, cancelled, ensure_running
 from viewport import REFERENCE_SIZE, image_size, scale_point, scale_roi
 
+import diag
+
 log = logging.getLogger("arena")
-log.setLevel(logging.INFO)
-if not log.handlers:
-    log.addHandler(logging.StreamHandler())
 
 ROI_POINTS   = [1693, 211, 164, 70]
-# 2026-11-02 重测（JCZX / 1280x720 截图，换算回 1920 基准）：
+# 2026-11-02 重测（<实例> / 1280x720 截图，换算回 1920 基准）：
 # 旧 ROI_OPP=[1380,190,340,105] 把「排名 48843」和「战力 41513」一起框进来，
 # 排名尾数 "43" 分更高，_num 会误取 43（把 4 万战力的强对手当成可打）。
 # 收窄到只框战力数字：1280 [1013,143,93,33] -> 1920 [1520,215,140,50]。
@@ -905,8 +904,12 @@ class ArenaLoop(CustomAction):
         ctrl = context.tasker.controller
         log.info("竞技场开始：重复=%s 目标次数=%s 可挑战最高战力=%s 最低挑战积分=%s",
                  repeat, target, max_power, min_points)
+        diag.stage("竞技场", "重复=%s 目标=%s 战力上限=%s 积分下限=%s"
+                   % (repeat, target, max_power, min_points))
         if not self._dismiss_post_battle_overlay(context):
             log.warning("无法清理遗留的竞技场结算页面，中止")
+            diag.fail("清理结算页", actual="残留的竞技场结算页清不掉", expect="返回大厅",
+                      step="竞技场/清理结算页")
             return False
         if self._at_challenge_confirm(context):
             self._back_to_arena_from_confirm(context)
@@ -1050,8 +1053,12 @@ class ArenaLoop(CustomAction):
 
         if completion_reason is None:
             log.error("竞技场未满足明确结束条件（主循环超时），任务失败并停止后续队列")
+            diag.fail("竞技场结束条件", actual="主循环 1200s 内未出现归零/达成",
+                      expect="模拟次数归零或挑战次数达标", step="竞技场/主循环")
             return False
 
         log.info("竞技场共挑战%d次，成功%d次，失败%d次", challenged, succeeded, failed)
         log.info("竞技场结束原因=%s", completion_reason)
+        diag.done("竞技场", "挑战=%d 成功=%d 失败=%d 结束原因=%s"
+                  % (challenged, succeeded, failed, completion_reason))
         return True

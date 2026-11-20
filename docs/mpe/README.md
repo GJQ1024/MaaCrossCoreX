@@ -18,4 +18,4 @@ Agent 只保留可独立测试的 OCR、计算、配置或单次判断能力。
 
 - `assets/resource/pipeline/base/界面导航.json`：可复用导航入口及页面识别节点，可直接在 MPE 中打开。
 - `assets/navigation/page_graph.json`：页面名称、识别特征、任务归属、录制样本和页面边的机器可读图谱。
-- 维护说明见 `docs/zh_cn/develop/page_navigation.md`。
+- 维护说明见 `docs/导航图.md`。

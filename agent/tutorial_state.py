@@ -16,6 +16,8 @@ import json
 import os
 from pathlib import Path
 
+import workspace_paths
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = PROJECT_ROOT / "config" / "tutorial_state.json"
 ACCOUNT_CACHE_PATH = PROJECT_ROOT / "config" / "account_current.json"
@@ -24,15 +26,16 @@ EVENT_PATH = PROJECT_ROOT / "config" / "tutorial_state_events.jsonl"
 DEFAULT_INSTANCE = "default"
 
 
-def _maa_root() -> Path:
-    """工作区根（MAA）：优先找名为 MAA 的祖先目录，找不到退回 parents[3]。"""
-    for parent in PROJECT_ROOT.parents:
-        if parent.name == "MAA":
-            return parent
-    return PROJECT_ROOT.parents[3]
+def maa_root() -> Path:
+    """工作区根（MAA），策略见 workspace_paths（不做越界索引）。
+
+    缺省落到 ``PROJECT_ROOT/config``（由调用方按需创建）；解压到
+    ``D:\\Downloads\\xxx`` 这类浅目录时不会再 IndexError。
+    """
+    return workspace_paths.maa_root(PROJECT_ROOT, PROJECT_ROOT / "config")
 
 
-ACCOUNT_STATE_PATH = _maa_root() / "sandbox" / "account_switch_state.json"
+ACCOUNT_STATE_PATH = maa_root() / "sandbox" / "account_switch_state.json"
 
 
 def instance_key() -> str:

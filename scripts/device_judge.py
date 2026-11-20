@@ -92,7 +92,7 @@ def _adb_text(adb_path: str, args: list[str], timeout: int = 15) -> tuple[int, s
     try:
         result = subprocess.run(
             [adb_path, *args],
-            capture_output=True, text=True, errors="replace", timeout=timeout,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         return result.returncode, result.stdout
@@ -115,7 +115,7 @@ def _wm(adb_path: str, serial: str, *args: str, timeout: int = 20) -> tuple[int,
     try:
         result = subprocess.run(
             [adb_path, "-s", serial, *args],
-            capture_output=True, text=True, errors="replace", timeout=timeout,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         return result.returncode, result.stdout, result.stderr
@@ -388,7 +388,10 @@ def judge_frame(frame_info: dict) -> dict:
     if w != EXPECTED_W or h != EXPECTED_H:
         return {
             "ok": False,
-            "reason": f"渲染面尺寸 {w}x{h} != {EXPECTED_W}x{EXPECTED_H}（自动化固定横屏渲染面）",
+            "reason": (
+                f"分辨率不符：期望 {EXPECTED_W}×{EXPECTED_H} 横屏（tablet.3），"
+                f"当前渲染面 {w}×{h}"
+            ),
             "w": w, "h": h,
         }
     if is_black_frame(frame_info):

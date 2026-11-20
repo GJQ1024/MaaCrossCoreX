@@ -34,7 +34,7 @@ class DiagnosticSink(ContextEventSink):
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=19)
-    parser.add_argument("--adb", default=r"E:\MuMuPlayer-12.0\shell\adb.exe")
+    parser.add_argument("--adb", default="adb")
     parser.add_argument("--address", default=os.environ.get("ADB_SERIAL", ""),
                         help="ADB serial（不写死端口；不填则读环境变量 ADB_SERIAL）")
     parser.add_argument("--apply", action="store_true", help="Actually correct lock states")

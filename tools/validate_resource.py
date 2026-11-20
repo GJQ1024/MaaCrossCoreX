@@ -36,7 +36,6 @@ INTERFACE_JSON = APP_DIR / "assets" / "interface.json"
 MIGRATED_FILES = {
     "启动游戏.json",
     "领取奖励.json",
-    "每日免费礼包.json",
     "关闭游戏.json",
     "重连网络.json",
     "通用.json",

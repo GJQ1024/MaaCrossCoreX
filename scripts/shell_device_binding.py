@@ -5,7 +5,7 @@
   MFAAvalonia 会在退出时把「当前设备」持久化成 MuMu 实例类型（`MuMu（实例 N）|...`），
   下次启动按该指纹匹配时依赖 MuMu 实例枚举；而 MuMuManager 会把运行中的实例
   误报成 `is_android_started=false`，枚举结果为空 → 匹配 0 台 → 回退到「按 adb 顺序
-  自动挑」，于是挑到实例 0（碧蓝航线 127.0.0.1:16384），任务跑错号。
+  自动挑」，于是挑到实例 0（碧蓝航线 127.0.0.1:<port>），任务跑错号。
 
 本脚本在壳启动之前运行：
   1. 先清掉 `adb devices` 里 offline 的残留条目；
@@ -13,7 +13,7 @@
   3. 枚举不到目标时（列表为空 / 读不到目标 android_id）才向 MuMuManager 取各实例的
      adb 端口逐个 `adb connect`，然后重新枚举；已能直接命中就绝不 connect；
   4. 命中 0 台或 ≥2 台 → 打印候选并退出码 3，调用方必须中止启动（不自动挑）；
-     同一台设备有多个入口（如 emulator-5556 与 127.0.0.1:16416）按 android_id 去重，
+     同一台设备有多个入口（如 emulator-<port> 与 127.0.0.1:<port>）按 android_id 去重，
      优先选 127.0.0.1:<port> 形式；
   5. 命中唯一一台 → 把它写成壳的纯 ADB 设备（序列号只作连接地址，身份由 android_id 认定）。
 
@@ -36,7 +36,7 @@ LOG_FILE = PROJECT_ROOT / "logs" / "shell_device_binding.log"
 GAME_PACKAGE = os.environ.get("MFA_GAME_PACKAGE") or "com.megagame.crosscore.bilibili"
 
 # 身份锚点与 pretask（agent/ensure_mumu.py）共用，避免两套口径漂移：
-# 默认只认当前模拟器的 android_id，换机/重装后用 MFA_TARGET_ANDROID_ID 覆盖。
+# 目标 android_id 由环境变量 MFA_TARGET_ANDROID_ID 提供，未提供时不按指纹过滤。
 sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 from device_identity import filter_by_target, pick_entry, target_android_id  # noqa: E402
 
@@ -287,7 +287,7 @@ def main() -> int:
 
     running = subprocess.run(
         ["tasklist", "/FI", "IMAGENAME eq MFAAvalonia.exe", "/NH"],
-        capture_output=True, text=True, errors="replace",
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     if "MFAAvalonia.exe" in (running.stdout or ""):
         log("壳正在运行，跳过绑定（应在壳启动前调用）")

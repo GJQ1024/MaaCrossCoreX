@@ -151,9 +151,149 @@
         "recognition": "DirectHit",
         "action": "DoNothing",
         "timeout": 10000,
-        "next": ["末日战线_次数判据", "末日战线_无次数", "末日战线_页标题"],
+        "next": ["末日战线_已击败", "末日战线_次数判据", "末日战线_无次数", "末日战线_页标题"],
         "on_error": ["末日战线_页识别失败"],
-        "next_doc": "页内三态：次数>0→按挑战状态分流；次数=0→直接领任务奖励；次数读不到→再等页标题锚点（暴虐）。2026-11-09 教训：next 的 on_error 要把「页面根本没出来」兜成带留帧的明确失败，不能只挂在候选子节点上（候选识别失败不会触发子节点 on_error）。"
+        "next_doc": "页内四态：boss 已击败→只领奖（不进战斗/扫荡）；次数>0→按挑战状态分流；次数=0→直接领任务奖励；次数读不到→再等页标题锚点（暴虐）。2026-11-09 教训：next 的 on_error 要把「页面根本没出来」兜成带留帧的明确失败，不能只挂在候选子节点上（候选识别失败不会触发子节点 on_error）。2026-11-20 新增「已击败」分支：世界 boss 当日被击败后页面中央常驻「已击败」牌，此时次数仍是 3/3、未挑战/已挑战文案消失，原链路会判状态未知失败；该分支放在次数判据之前，不依赖 P-127 那段「次数：3/3」OCR。"
+    },
+    "末日战线_已击败": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [360, 320, 170, 100],
+                "template": "末日战线_已击败.png",
+                "threshold": 0.85
+            }
+        },
+        "action": "DoNothing",
+        "next": ["末日战线_已击败_领任务"],
+        "next_doc": "活动页中央「已击败」牌＝世界 boss 当日已被击败，只领任务奖励、不再开战。模板取自 2026-11-20 23:28 用户实机帧：黄色文字包围盒 (396,345)-(490,375)，四周留 8px（余量 8/111=0.072），尺寸 111x47。同帧正例 1.0000、非本区域次高 0.3554；奖励页整帧最高 0.4917、本 ROI 内 0.2116，阈值 0.85 有 ≥0.36 间隔。未命中即按原次数/战斗流程走（保守：读不准不跳过开战）。"
+    },
+    "末日战线_已击败_领任务": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [60, 580, 170, 60],
+                "expected": ["任务"],
+                "threshold": 0.2
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": ["末日战线_已击败_任务页"],
+        "next_doc": "与 末日战线_领任务奖励 同 ROI：活动页左下「任务」入口（实测约 134,609）。"
+    },
+    "末日战线_已击败_任务页": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [90, 85, 340, 80],
+                "expected": ["任务奖励"],
+                "threshold": 0.2
+            }
+        },
+        "timeout": 6000,
+        "action": "DoNothing",
+        "next": ["末日战线_已击败_可领", "末日战线_已击败_已完成"],
+        "on_error": ["末日战线_已击败_失败"],
+        "next_doc": "任务页标题「任务奖励」确认已进入领奖页；读不到＝任务入口没点开，留帧失败，不在错误页上空转。之后按「一键领取是否金色亮态」与「行尾是否出现已完成」两态分流。"
+    },
+    "末日战线_已击败_可领": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "ui_button_state",
+                "custom_recognition_param": { "preset": "claim_all", "roi": [1025, 89, 152, 48], "want": "enabled", "threshold": 120 }
+            }
+        },
+        "timeout": 12000,
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [1100, 120, 2, 2]
+            }
+        },
+        "post_delay": 1500,
+        "next": ["末日战线_已击败_领取弹窗"],
+        "on_error": ["末日战线_已击败_失败"],
+        "next_doc": "金色亮态点 (1100,120)。ROI 收窄到按钮本体 [1025,89,152,48]：原宽 ROI [1010,85,200,60] 因带入四周黑边只有 107.2（同一 UI 版本），会把亮态误判成灰态。实测亮态 140.8（23:40:04 过渡帧）/160.5（静态帧）、灰态 60.0（23:40:14 领取后）/64.8（23:43:08 已领完帧），阈值取 120：两侧余量 ≥20。timeout 12000 覆盖「点击→获得物品弹窗」的等待，弹窗不来即由本节点 on_error 留帧失败。"
+    },
+    "末日战线_已击败_已完成": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [1050, 320, 200, 320],
+                "expected": ["已完成"],
+                "threshold": 0.2
+            }
+        },
+        "timeout": 5000,
+        "action": "DoNothing",
+        "next": ["末日战线_无奖励完成"],
+        "on_error": ["末日战线_已击败_失败"],
+        "next_doc": "已领先的行尾会从金色「领取」变成白色「已完成」（2026-11-20 23:43:08 实机帧：x 1071~1133，y 348/472/596 三行）；这是可领/已领完的第二态判据，不依赖「一键领取」灰态模板（灰态按钮接近全黑，模板 一键领取.png 在 0.85 阈值下会认不到）。两态都不命中即留帧失败。"
+    },
+    "末日战线_已击败_领取弹窗": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "roi": [447, 117, 405, 117],
+                "expected": ["获得物品"],
+                "threshold": 0.3
+            }
+        },
+        "timeout": 8000,
+        "action": "DoNothing",
+        "next": ["[JumpBack]通用-遮罩处理", "末日战线_已击败_再判"],
+        "on_error": ["末日战线_已击败_失败"],
+        "next_doc": "领奖结果复核（硬）：点了一键领取必须出现「获得物品」回执并关闭；没有回执＝点空/未到账，留帧失败，不写完成记录。"
+    },
+    "末日战线_已击败_再判": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "timeout": 3000,
+        "max_hit": 5,
+        "next": ["末日战线_已击败_领取弹窗", "末日战线_已击败_复核"],
+        "on_error": ["末日战线_已击败_失败"],
+        "next_doc": "一次领取可能连弹多个「获得物品」：再判最多 5 轮，无弹窗即进入领完复核。"
+    },
+    "末日战线_已击败_复核": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "ui_button_state",
+                "custom_recognition_param": { "preset": "claim_all", "roi": [1025, 89, 152, 48], "want": "disabled", "threshold": 120 }
+            }
+        },
+        "timeout": 8000,
+        "action": "DoNothing",
+        "next": ["末日战线_记忆完成"],
+        "on_error": ["末日战线_已击败_失败"],
+        "next_doc": "第二条独立证据：领完后「一键领取」必须回落到不可点（亮度<120；2026-11-20 23:40:14 实跑灰态 60.0）。仍亮＝还有未领或点击未生效，留帧失败，不虚报完成。"
+    },
+    "末日战线_已击败_失败": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_snapshot",
+                "custom_action_param": { "label": "doomsday_boss_defeated_claim", "reason": "已击败分支领奖未通过复核" }
+            }
+        },
+        "next": ["末日战线_已击败_报错"],
+        "next_doc": "先留帧再失败，便于复盘是按钮态、弹窗还是页面问题。"
+    },
+    "末日战线_已击败_报错": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "task_fail",
+                "custom_action_param": { "reason": "boss 已击败，只领奖分支未通过复核（无获得物品回执 / 一键领取仍可点 / 任务页未进入）", "cleanup_entry": "通用_回主界面并结束" }
+            }
+        },
+        "next_doc": "已击败分支的明确失败出口，不写完成记录。"
     },
     "末日战线_次数判据": {
         "recognition": "Custom",
@@ -492,15 +632,22 @@
             "type": "OCR",
             "param": {
                 "roi": [0, 20, 760, 240],
-                "expected": ["扫荡成功"],
+                "expected": ["扫荡成功", "扫荡成坊", "伤害统计"],
                 "threshold": 0.2
             }
         },
-        "timeout": 30000,
-        "action": "DoNothing",
-        "next": ["[JumpBack]通用-遮罩处理", "末日战线_页判据"],
+        "timeout": 8000,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "ui_mask_close",
+                "custom_action_param": { "preset": "battle_result" }
+            }
+        },
+        "post_delay": 1200,
+        "next": ["末日战线_页判据"],
         "on_error": ["末日战线_页判据"],
-        "next_doc": "扫荡成功页与战斗结算同布局：关遮罩后回活动页再判次数（2/3→1/3 实测）。"
+        "next_doc": "2026-11-11 实机：标题艺术字 OCR 恒为「扫荡成坊」(0.8427)、同页「伤害统计」稳定 0.9917，原 expected 只有「扫荡成功」→ 识不中、结算页无人关，连带后面 4 条任务卡在 子任务_进入首页。改为本节点自己按 battle_result 关页（中央一次离页），关不掉也走 页判据 继续判次数。timeout 8000 < 父节点 扫荡确定 的 20s reco 预算（原 30000 被父级 21004ms 抢先判死）。"
     },
     "末日战线_领任务奖励": {
         "recognition": {
@@ -536,7 +683,7 @@
     "末日战线_任务页_可领": {
         "recognition": "Custom",
         "custom_recognition": "ui_button_state",
-        "custom_recognition_param": { "preset": "claim_all", "roi": [1010, 85, 200, 60], "want": "enabled", "threshold": 140 },
+        "custom_recognition_param": { "preset": "claim_all", "roi": [1025, 89, 152, 48], "want": "enabled", "threshold": 120 },
         "action": {
             "type": "Click",
             "param": {
@@ -545,15 +692,15 @@
         },
         "post_delay": 2000,
         "next": ["末日战线_领取弹窗"],
-        "next_doc": "「一键领取」亮态（brightness>=140，2026-11-09 实测灰=44.7、亮=148.8）才点 (1100,120)；点完判「获得物品」。若亮态点了却没有弹窗，next 耗尽后由父级 on_error 落到无进度退出，不虚报完成。"
+        "next_doc": "「一键领取」亮态才点 (1100,120)。ROI 收窄到按钮本体 [1025,89,152,48]，阈值 120（P-144）：原宽 ROI [1010,85,200,60] 把四周黑边算进去，亮态只有 107.2 会被误判灰态。实测亮态 160.5（23:28 静态帧）/140.8（23:40:04 过渡帧），灰态 64.8（23:43:08）/60.0（23:40:14），阈值 120 两侧余量 ≥20.8 / ≥55.2。亮态点了却没有弹窗时，本节点的 next 窗口耗尽且未设 on_error → 任务硬失败，不会回落成「无奖励完成」（更正 P-144 记录里旧注释的说法）。"
     },
     "末日战线_任务页_灰": {
         "recognition": "Custom",
         "custom_recognition": "ui_button_state",
-        "custom_recognition_param": { "preset": "claim_all", "roi": [1010, 85, 200, 60], "want": "disabled", "threshold": 140 },
+        "custom_recognition_param": { "preset": "claim_all", "roi": [1025, 89, 152, 48], "want": "disabled", "threshold": 120 },
         "action": "DoNothing",
         "next": ["末日战线_无奖励完成"],
-        "next_doc": "「一键领取」灰态（brightness<140）=本日无可领奖励；不点按钮，直接写完成。与 _可领 是并列互斥的两个显式识别，不靠 on_error 兜。"
+        "next_doc": "「一键领取」灰态（同一按钮本体 ROI、阈值 120）=本日无可领奖励；不点按钮，直接写完成。灰态实测 64.8/60.0，距阈值 120 仍有 ≥55 余量，收窄 ROI 不会把灰读亮。与 _可领 是并列互斥的两个显式识别，不靠 on_error 兜。"
     },
     "末日战线_领取弹窗": {
         "recognition": {

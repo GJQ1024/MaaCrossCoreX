@@ -2,7 +2,7 @@
 
 背景（P-065 前置项）：MaaFramework 会在部分任务开始时重建 `debug/maafw.log`
 （旧文件改名为 `maafw.bak.<时间>.log`，且旧 bak 可能被清理），导致前一个任务
-的节点识别分数、动作结果、失败原因在跑完整队后查不到。壳层（MFAAvalonia）
+的节点识别分数、动作结果、失败原因在跑完整队后查不到。壳层（MaaCrossCoreX）
 不可控，因此改由 agent 侧启动一个守护线程：
 1. 增量 tail `debug/maafw.log`，写入 `logs/maafw_archive/` 下**只追加不覆盖**的分段文件；
 2. 扫描 `debug/maafw.bak.*.log`，把尚未归档的备份整份复制进归档目录；
@@ -20,6 +20,8 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
+
+import diag
 
 _POLL_INTERVAL = 0.5
 _BAK_SCAN_INTERVAL = 10.0
@@ -79,6 +81,8 @@ class _TaskRecord:
     __slots__ = (
         "entry", "task_id", "start", "end", "result", "node_failures",
         "recognition_failures", "timeouts", "on_error", "segment",
+        "steps_pos", "stages", "unmet", "evidence", "failure_step",
+        "diagnosis_gap", "diagnosis_source",
     )
 
     def __init__(self, entry, task_id, ts, segment):
@@ -92,6 +96,13 @@ class _TaskRecord:
         self.timeouts = []
         self.on_error = None
         self.segment = segment
+        self.steps_pos = None
+        self.stages = []
+        self.unmet = []
+        self.evidence = []
+        self.failure_step = None
+        self.diagnosis_gap = []
+        self.diagnosis_source = None
 
     def to_dict(self):
         start = self.start or ""
@@ -109,6 +120,10 @@ class _TaskRecord:
             failure_reason = "node_failed:" + self.node_failures[-1].get("node", "")
         if self.timeouts:
             failure_reason = "reco_timeout:" + self.timeouts[-1].get("node", "")
+        if self.result == "failed" and self.diagnosis_gap:
+            # 只有「字段缺失」才加前缀；缺了就不假装这条失败已经有结论。
+            failure_reason = "undiagnosed:" + (failure_reason or "unknown")
+        complete = bool(self.failure_step and self.unmet and self.evidence)
         return {
             "entry": self.entry,
             "task_id": self.task_id,
@@ -117,6 +132,13 @@ class _TaskRecord:
             "end": self.end,
             "duration_s": duration,
             "failure_reason": failure_reason,
+            "failure_step": self.failure_step,
+            "diagnosis_complete": complete,
+            "diagnosis_source": self.diagnosis_source,
+            "diagnosis_gap": self.diagnosis_gap,
+            "stages": self.stages,
+            "unmet": self.unmet,
+            "evidence": self.evidence,
             "on_error_frame": self.on_error,
             "node_failures": self.node_failures,
             "recognition_failures": self.recognition_failures,
@@ -269,7 +291,86 @@ class Archiver:
         name = "%s_%03d_%s_%s.json" % (stamp, self._task_seq, safe_entry, record.result or "running")
         return self.task_runs_dir / name
 
+    def _steps_file_size(self):
+        try:
+            return (self.root / "logs" / "task_steps.jsonl").stat().st_size
+        except OSError:
+            return 0
+
+    def _collect_steps(self, record):
+        """把本任务窗口内 diag.py 写的 task_steps.jsonl 收进任务记录。"""
+        if record.steps_pos is None:
+            return
+        path = self.root / "logs" / "task_steps.jsonl"
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                fh.seek(record.steps_pos)
+                raw = fh.read()
+        except (OSError, ValueError):
+            return
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except ValueError:
+                continue
+            kind = item.get("kind")
+            if kind == "stage":
+                record.stages.append(item)
+                record.diagnosis_source = record.diagnosis_source or "diag"
+            elif kind == "fail":
+                record.unmet.append({
+                    "cond": item.get("cond"),
+                    "expect": item.get("expect"),
+                    "actual": item.get("actual"),
+                    "frame": item.get("frame"),
+                })
+                record.failure_step = item.get("stage") or item.get("cond")
+                record.diagnosis_source = "diag"
+            elif kind == "judge" and item.get("ok") is False:
+                record.evidence.append({
+                    "kind": "judge", "ts": item.get("ts"), "cond": item.get("cond"),
+                    "expect": item.get("expect"), "actual": item.get("actual"),
+                })
+                record.diagnosis_source = "diag"
+        if len(record.stages) > 80:
+            record.stages = record.stages[-80:]
+
+    def _enrich(self, record):
+        """失败必须能回答三问；缺的用 maafw 归档原文补最低标准。"""
+        self._collect_steps(record)
+        if record.result != "failed":
+            return
+        snapshot = {
+            "timeouts": record.timeouts,
+            "node_failures": record.node_failures,
+            "recognition_failures": record.recognition_failures,
+            "on_error_frame": record.on_error,
+        }
+        segment = self.archive_dir / record.segment if record.segment else None
+        filled = diag.backfill(snapshot, segment)
+        if not record.unmet:
+            record.unmet = filled["unmet"]
+        if not record.evidence:
+            record.evidence = filled["evidence"]
+        if not record.failure_step:
+            record.failure_step = filled["failure_step"]
+        if not record.failure_step and record.stages:
+            record.failure_step = record.stages[-1].get("stage")
+        record.diagnosis_source = record.diagnosis_source or filled["diagnosis_source"]
+        missing = []
+        if not record.failure_step:
+            missing.append("failure_step")
+        if not record.unmet:
+            missing.append("unmet")
+        if not record.evidence:
+            missing.append("evidence")
+        record.diagnosis_gap = missing
+
     def _finalize(self, record):
+        self._enrich(record)
         data = record.to_dict()
         try:
             path = self._task_output_path(record)
@@ -291,6 +392,13 @@ class Archiver:
             ]
             if record.on_error:
                 lines.append("    frame=%s" % record.on_error)
+            # 三问：卡在哪一步 / 读到什么 / 哪个条件没满足
+            lines.append("    step=%s" % (data.get("failure_step") or "?"))
+            lines.append("    read=%s" % self._evidence_text(data))
+            lines.append("    unmet=%s" % self._unmet_text(data))
+            if data.get("diagnosis_gap"):
+                lines.append("    diagnosis_gap=%s（缺字段，已标 undiagnosed）"
+                             % ",".join(data["diagnosis_gap"]))
             lines.append("    raw=%s" % record.segment)
             try:
                 with open(self.failures_path, "a", encoding="utf-8") as fh:
@@ -298,6 +406,28 @@ class Archiver:
             except OSError:
                 pass
         self._current = None
+
+    @staticmethod
+    def _evidence_text(data):
+        items = []
+        for ev in (data.get("evidence") or [])[:3]:
+            if ev.get("kind") == "recognition":
+                reco = ev.get("reco") or {}
+                detail = reco.get("detail") or {}
+                items.append("%s %s" % (ev.get("node"), json.dumps(detail, ensure_ascii=False)[:200]))
+            elif ev.get("kind") == "judge":
+                items.append("%s 期望(%s) 实际(%s)" % (ev.get("cond"), ev.get("expect"), ev.get("actual")))
+            elif ev.get("kind") == "frame":
+                items.append("frame=%s" % ev.get("path"))
+        return " | ".join(items) if items else "无"
+
+    @staticmethod
+    def _unmet_text(data):
+        items = []
+        for item in (data.get("unmet") or [])[:3]:
+            items.append("%s（期望 %s，实际 %s）"
+                         % (item.get("cond"), item.get("expect"), item.get("actual")))
+        return " | ".join(items) if items else "无"
 
     @staticmethod
     def _reason_text(record):
@@ -353,6 +483,8 @@ class Archiver:
             self._current = _TaskRecord(
                 details.get("entry"), details.get("task_id"), ts, self._segment_name
             )
+            self._current.steps_pos = self._steps_file_size()
+            diag.reset_stage_budget()
         elif msg in ("Tasker.Task.Succeeded", "Tasker.Task.Failed"):
             record = self._current
             if record is None:

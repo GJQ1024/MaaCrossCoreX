@@ -110,7 +110,7 @@ def load_order_settings():
     try:
         data = json.loads(_instance_config_path().read_text(encoding="utf-8"))
         task = None
-        for entry in ("基建", "BaseOrderTask"):
+        for entry in ("订单", "基建", "BaseOrderTask"):
             task = next(
                 (item for item in data.get("TaskItems", []) if item.get("entry") == entry),
                 None,

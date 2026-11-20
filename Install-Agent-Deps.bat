@@ -28,7 +28,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo Agent deps installed. Start MFAAvalonia.exe next.
+echo Agent deps installed. Start MaaCrossCoreX.exe next.
 if not exist "%~dp0config\orders_source.json" (
   echo Tip: for order-friend tasks, copy config\orders_source.example.json
   echo      to config\orders_source.json and set your url.

@@ -20,7 +20,7 @@
 3. 在 MPE 选择“导入（粘贴板）”。
 
 如需保存回本地，在 `assets/resource` 目录运行 `mpelb`，然后让网页连接
-`localhost:9066`。
+`127.0.0.1:<port>`。
 
 ## 实机查看识别结果
 
@@ -32,4 +32,4 @@
 
 打开 `http://127.0.0.1:8011`，资源目录选择 `assets/resource`，控制器选
 `Adb` 并填写 MuMu 的 ADB 路径与地址。带 `Custom` 的节点还需要按
-`开发专用.md` 第 2.2 节启动 Agent。
+`docs/用户安装.md` 的启动说明启动 Agent。

@@ -4,7 +4,7 @@
 本脚本不新增任何阈值。
 
 用法：
-    python tools/capture_chip_detail_evidence.py --address 127.0.0.1:16416
+    python tools/capture_chip_detail_evidence.py --address 127.0.0.1:&lt;port&gt;
 """
 
 from __future__ import annotations
@@ -199,11 +199,11 @@ def _nav(tasker, node):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--address", default="127.0.0.1:16416")
+    parser.add_argument("--address", default="127.0.0.1:5555")
     parser.add_argument("--adb", help="adb 路径，默认自动查找 MuMu")
     args = parser.parse_args()
-    if args.address != "127.0.0.1:16416":
-        raise SystemExit("控制器必须是 127.0.0.1:16416，当前 %s" % args.address)
+    if not args.address:
+        raise SystemExit("必须指定 --address 控制器地址")
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         datefmt="%H:%M:%S", stream=sys.stdout)

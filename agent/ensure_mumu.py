@@ -5,9 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-import shutil
 import socket
-import string
 import subprocess
 import sys
 import time
@@ -30,6 +28,31 @@ from device_identity import (  # noqa: E402
     save_target_android_id,
     target_android_id,
 )
+import mumu_locator  # noqa: E402  MuMu / adb 定位唯一来源（与 pretask_landscape 共用）
+
+
+def _configure_console():
+    """中文 Windows（cp936）兜底：不可编码字符替换掉，而不是让 print 抛异常。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, OSError, ValueError):
+            pass
+
+
+_configure_console()
+
+
+def _safe_print(message):
+    try:
+        print(message, flush=True)
+    except UnicodeEncodeError:
+        # 按当前 stdout 编码做 replace 降级；日志绝不允许打断流程。
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        try:
+            print(message.encode(encoding, "replace").decode(encoding, "replace"), flush=True)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def elapsed():
@@ -43,7 +66,13 @@ INSTANCE_OPTION = "MuMu实例"
 AUTOSTART_OPTION = "模拟器自动启动"
 REDETECT_OPTION = "每次重新检测连接"
 # 认包不认端口：端口由模拟器分配、会漂移，也会被 is_main 抢走；装没装游戏才是客观事实。
-GAME_PACKAGE = os.environ.get("MFA_GAME_PACKAGE") or "com.megagame.crosscore.bilibili"
+# 官服/B服包名都算已知；运行时优先按设备实际安装情况探测，探测不到才看 MFA_GAME_PACKAGE。
+OFFICIAL_GAME_PACKAGE = "com.megagame.crosscore"
+BILI_GAME_PACKAGE = "com.megagame.crosscore.bilibili"
+KNOWN_GAME_PACKAGES = (OFFICIAL_GAME_PACKAGE, BILI_GAME_PACKAGE)
+CONFIGURED_GAME_PACKAGE = os.environ.get("MFA_GAME_PACKAGE", "").strip()
+# 当前生效包名（探测后更新；空串 = 未探测到且未配置，只按 android_id 识别）
+GAME_PACKAGE = CONFIGURED_GAME_PACKAGE
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -56,7 +85,10 @@ LOG_FILE = PROJECT_ROOT / "logs" / "ensure_mumu.log"
 
 
 def log(message):
-    print(f"[MuMu pretask] {message}", flush=True)
+    try:
+        _safe_print(f"[MuMu pretask] {message}")
+    except Exception:  # noqa: BLE001  日志失败绝不影响 pretask 本身
+        pass
     try:
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         stamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -72,6 +104,7 @@ def run(args, timeout=30):
             [str(value) for value in args],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=timeout,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -181,112 +214,13 @@ def runtime_settings(instance):
     }
 
 
-def registry_locations():
-    if os.name != "nt":
-        return []
-    try:
-        import winreg
-    except ImportError:
-        return []
-    locations = []
-    roots = (
-        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
-        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
-        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
-    )
-    for hive, key_name in roots:
-        try:
-            with winreg.OpenKey(hive, key_name) as root:
-                for index in range(winreg.QueryInfoKey(root)[0]):
-                    try:
-                        with winreg.OpenKey(root, winreg.EnumKey(root, index)) as item:
-                            name = str(winreg.QueryValueEx(item, "DisplayName")[0])
-                            if "mumu" not in name.lower() and "网易模拟器" not in name:
-                                continue
-                            for value_name in ("InstallLocation", "DisplayIcon", "UninstallString"):
-                                try:
-                                    value = str(winreg.QueryValueEx(item, value_name)[0]).strip(' "')
-                                    locations.append(Path(value).parent if value.lower().endswith(".exe") else Path(value))
-                                except OSError:
-                                    pass
-                    except OSError:
-                        pass
-        except OSError:
-            pass
-    return locations
-
-
-def candidate_roots():
-    cached = load_json(CACHE_FILE)
-    values = [
-        os.environ.get("MUMU_HOME"),
-        cached.get("root"),
-        os.environ.get("ProgramFiles"),
-        os.environ.get("ProgramFiles(x86)"),
-        os.environ.get("LOCALAPPDATA"),
-    ]
-    values.extend(registry_locations())
-    for letter in string.ascii_uppercase:
-        drive = Path(f"{letter}:\\")
-        if drive.exists():
-            values.extend((
-                drive / "MuMu",
-                drive / "MuMuPlayer-12.0",
-                drive / "Netease" / "MuMu",
-                drive / "Netease" / "MuMuPlayer-12.0",
-                drive / "Program Files" / "Netease" / "MuMu",
-                drive / "Program Files" / "Netease" / "MuMuPlayer-12.0",
-                drive / "Program Files (x86)" / "Netease" / "MuMu",
-                drive / "Program Files (x86)" / "Netease" / "MuMuPlayer-12.0",
-            ))
-    seen = set()
-    for value in values:
-        if not value:
-            continue
-        path = Path(value).expanduser()
-        variants = (
-            path,
-            path / "Netease" / "MuMu",
-            path / "Netease" / "MuMuPlayer-12.0",
-            path / "MuMu",
-            path / "MuMuPlayer-12.0",
-        )
-        for candidate in variants:
-            key = str(candidate).lower()
-            if key not in seen:
-                seen.add(key)
-                yield candidate
-
-
 def find_mumu():
-    explicit_manager = os.environ.get("MUMU_MANAGER")
-    if explicit_manager and Path(explicit_manager).is_file():
-        manager = Path(explicit_manager)
-        root = manager.parent.parent
-        return root, manager, find_adb(root)
-    for root in candidate_roots():
-        manager = root / "nx_main" / "MuMuManager.exe"
-        if manager.is_file():
-            adb = find_adb(root)
-            if adb:
-                return root.resolve(), manager.resolve(), adb.resolve()
-    return None, None, None
+    """兼容旧调用点（tools/ 与 shutdown_mumu 会 patch 这个函数名）。"""
+    return mumu_locator.find_mumu(PROJECT_ROOT, preferred=[load_json(CACHE_FILE).get("root")])
 
 
 def find_adb(root):
-    explicit = os.environ.get("MUMU_ADB")
-    if explicit and Path(explicit).is_file():
-        return Path(explicit)
-    # 与 scripts/shell_device_binding.py 的顺序一致：优先 nx_device 自带 adb。
-    # MaaToolkit 枚举出的 Name 用的也是这个路径；写错 adb 路径会直接导致指纹 Name 不匹配。
-    for candidate in sorted(root.glob("nx_device/*/shell/adb.exe"), reverse=True):
-        if candidate.is_file():
-            return candidate
-    for relative in (Path("shell/adb.exe"), Path("nx_main/adb.exe"), Path("adb.exe")):
-        candidate = root / relative
-        if candidate.is_file():
-            return candidate
-    return None
+    return mumu_locator.find_adb(root)
 
 
 def manager_info(manager, index):
@@ -316,6 +250,23 @@ def manager_info_all(manager):
         if str(key).isdigit() and isinstance(value, dict):
             result[int(key)] = value
     return result
+
+
+def detect_single_instance(manager):
+    """未配置实例号时：实际只有 1 台实例才采纳它，否则返回 None（不猜）。
+
+    实例配置里的「MuMu实例」是显式覆盖，调用方应优先使用；本函数只在
+    配置/缓存都没有实例号时兜底，避免单实例机器因默认 vmindex 写错而中止。
+    """
+    instances = manager_info_all(manager)
+    if len(instances) == 1:
+        index = next(iter(instances))
+        log(
+            f"[身份] 未配置实例号：MuMu 只有 1 台实例，使用实例 {index}"
+            "（实例配置里的值优先于该探测）"
+        )
+        return index
+    return None
 
 
 def residual_headless_process():
@@ -482,8 +433,61 @@ def index_for_serial(manager, serial):
     return None
 
 
+def package_label(package):
+    if package == OFFICIAL_GAME_PACKAGE:
+        return f"{package}（官服）"
+    if package == BILI_GAME_PACKAGE:
+        return f"{package}（B服）"
+    return package or "官服/B服（未配置）"
+
+
+def installed_game_packages(adb, serial):
+    """读取设备已安装的官服/B服包；adb 失败返回 []。只读查询。"""
+    code, output, _ = run(
+        [adb, "-s", serial, "shell", "pm", "list", "packages"],
+        timeout=20,
+    )
+    if code != 0:
+        return []
+    installed = set()
+    for line in output.splitlines():
+        name = line.strip()
+        if name.startswith("package:"):
+            name = name[len("package:"):]
+        if name in KNOWN_GAME_PACKAGES:
+            installed.add(name)
+    return [package for package in KNOWN_GAME_PACKAGES if package in installed]
+
+
+def detect_game_package(adb, serial):
+    """优先用设备实际安装的包；探测不到才退回 MFA_GAME_PACKAGE，并说明用了哪个。"""
+    global GAME_PACKAGE
+    installed = installed_game_packages(adb, serial)
+    if len(installed) == 1:
+        GAME_PACKAGE = installed[0]
+        log(f"[身份] 探测到已安装包：{package_label(GAME_PACKAGE)}")
+    elif len(installed) > 1:
+        preferred = (
+            CONFIGURED_GAME_PACKAGE
+            if CONFIGURED_GAME_PACKAGE in installed
+            else OFFICIAL_GAME_PACKAGE
+        )
+        GAME_PACKAGE = preferred
+        log(
+            f"[身份] 同时装有官服与B服 {installed}，按 {package_label(GAME_PACKAGE)} 处理"
+            "（可用 MFA_GAME_PACKAGE 覆盖）"
+        )
+    elif CONFIGURED_GAME_PACKAGE:
+        GAME_PACKAGE = CONFIGURED_GAME_PACKAGE
+        log(f"[身份] 未探测到官服/B服包，沿用配置 MFA_GAME_PACKAGE={GAME_PACKAGE}")
+    else:
+        GAME_PACKAGE = ""
+        log("[身份] 未探测到官服/B服包，且未配置 MFA_GAME_PACKAGE；只按 android_id 识别")
+    return GAME_PACKAGE
+
+
 def adb_package_hit(adb, serial):
-    """该实例是否装了目标游戏包。只读查询，不修改设备。"""
+    """该实例是否装了官服/B服游戏包（未显式配置时任一即可）。只读查询。"""
     if not serial:
         return False
     if adb_state(adb, serial) != "device":
@@ -492,14 +496,12 @@ def adb_package_hit(adb, serial):
             return False
     # adb shell 偶发瞬时失败，两次都判不出才算没有。
     for _ in range(2):
-        code, output, _ = run(
-            [adb, "-s", serial, "shell", "pm", "list", "packages", GAME_PACKAGE],
-            timeout=20,
-        )
-        if code == 0:
-            return any(
-                line.strip() == f"package:{GAME_PACKAGE}"
-                for line in output.splitlines()
+        installed = installed_game_packages(adb, serial)
+        if installed:
+            return (
+                CONFIGURED_GAME_PACKAGE in installed
+                if CONFIGURED_GAME_PACKAGE
+                else True
             )
     return False
 
@@ -554,18 +556,21 @@ def resolve_adb_target(adb, preferred_serial=""):
     """
     devices = adb_devices(adb)
     online = [serial for serial, state in devices.items() if state == "device"]
-    log(f"[身份] 包名={GAME_PACKAGE}；在线设备 {len(online)} 台")
+    log(
+        f"[身份] 包名={package_label(CONFIGURED_GAME_PACKAGE)}"
+        f"（未配置时按设备实际安装的官服/B服包探测）；在线设备 {len(online)} 台"
+    )
     with_game = []
     unreadable = []
     for serial in online:
         if not adb_package_hit(adb, serial):
-            log(f"[身份] 候选 {serial} → 无 {GAME_PACKAGE}，跳过")
+            log(f"[身份] 候选 {serial} → 无官服/B服包，跳过")
             continue
         aid = adb_android_id(adb, serial) or ""
         if not aid:
             unreadable.append(serial)
             log(
-                f"[身份] 候选 {serial} 装了 {GAME_PACKAGE}，"
+                f"[身份] 候选 {serial} 装了官服/B服包，"
                 "但取不到 android_id（空/unknown/命令失败）"
             )
         with_game.append((serial, aid))
@@ -586,7 +591,7 @@ def resolve_adb_target(adb, preferred_serial=""):
         elif len(with_game) > 1:
             log("[身份] 未配置目标 android_id：不做指纹过滤，多台设备将按歧义规则停止")
         elif not with_game:
-            log(f"[身份] 未配置目标 android_id：没有装了 {GAME_PACKAGE} 的在线设备")
+            log("[身份] 未配置目标 android_id：没有装了官服/B服包的在线设备")
         else:
             log("[身份] 未配置目标 android_id：候选设备取不到 android_id，本次不做指纹绑定")
 
@@ -635,7 +640,7 @@ def connection_usable(adb, serial, instance):
     if not serial:
         return False
     root, index = device_root_index(instance, adb)
-    manager = (root / "nx_main" / "MuMuManager.exe") if root else None
+    manager = mumu_locator.find_manager(root) if root else None
     if manager and manager.is_file():
         actual = index_for_serial(manager, serial)
         if actual is not None and actual != index:
@@ -687,20 +692,15 @@ def recover_existing_adb(adb, serial, instance, allow_hard_restart=True):
 
 
 def resolve_adb_path(value):
-    """把配置里的 AdbPath 解析成可执行文件。
+    """把配置里的 AdbPath 解析成可执行文件；解析不到返回 ""（绝不回落裸 adb）。
 
     指纹形状要求 AdbPath="adb"（依赖 PATH），不能再用 Path("adb").is_file()
-    误判成「没有保存连接」。
+    误判成「没有保存连接」。实际定位统一交给 mumu_locator（与 pretask_landscape 同序）。
     """
-    text = str(value or "").strip()
-    if text and text.lower() != "adb" and Path(text).is_file():
-        return str(Path(text))
-    # 与 binder 同序：优先 MuMu 自带 adb（MaaToolkit 的 Name 也基于它）。
-    _, _, adb = find_mumu()
-    if adb:
-        return str(adb)
-    found = shutil.which("adb")
-    return found or ""
+    try:
+        return mumu_locator.resolve_adb(PROJECT_ROOT, configured=value)
+    except mumu_locator.MuMuNotFound:
+        return ""
 
 
 def saved_connection(instance):
@@ -726,9 +726,9 @@ def device_root_index(instance, adb):
     except (TypeError, ValueError, json.JSONDecodeError):
         pass
     if root is None or not root.exists():
-        # adb 通常在 <root>/nx_main/adb.exe
-        candidate = Path(adb).resolve().parent.parent
-        if (candidate / "nx_main" / "MuMuManager.exe").is_file():
+        # adb 可能在 nx_main / shell / nx_device\*\shell 等任意布局，统一归一。
+        candidate = mumu_locator.root_from(adb)
+        if candidate is not None and mumu_locator.find_manager(candidate):
             root = candidate
     if root is None:
         found, _, _ = find_mumu()
@@ -798,7 +798,7 @@ def update_instance(path, instance, adb, serial, root, index):
     instance["AdbDevice"] = device
     instance["RememberAdb"] = True
     instance["UseFingerprintMatching"] = True
-    manager = Path(root) / "nx_main" / "MuMuManager.exe" if root else None
+    manager = mumu_locator.find_manager(root) if root else None
     if manager and manager.is_file():
         # 与 MFA「启动设置 > 游戏路径」使用同一套启动入口。这样连接失败时
         # MFA 可以直接复用本次自动检测到的 MuMu，而不依赖用户手工填写路径。
@@ -840,8 +840,12 @@ def main():
         _, _, found_adb = find_mumu()
         adb = str(found_adb) if found_adb else ""
     if not adb:
-        log("未找到 adb 可执行文件；停止（不自动挑）")
-        return EXIT_FAIL
+        # 只是宿主侧定位失败，不代表设备异常：不中止整条任务链（2026-11-18）。
+        log("警告：未找到可用的 adb.exe，已跳过本次 MuMu/ADB 自动配置；任务链继续")
+        log("     壳若已连接设备，后续任务仍可正常执行；需要自动配置时按下面指引填一次 ADB 路径")
+        for line in mumu_locator.describe_search(PROJECT_ROOT):
+            log("  " + line)
+        return EXIT_OK
     run([adb, "start-server"], timeout=20)
 
     if saved and not settings["redetect"]:
@@ -853,7 +857,7 @@ def main():
                 log(f"[身份] 已保存连接无法按 android_id 唯一识别（{exc}），停止（不自动挑）")
                 return EXIT_AMBIGUOUS
             root, index = device_root_index(instance, adb)
-            manager = Path(root) / "nx_main" / "MuMuManager.exe" if root else None
+            manager = mumu_locator.find_manager(root) if root else None
             if manager and manager.is_file():
                 actual = index_for_serial(manager, serial)
                 if actual is not None:
@@ -876,13 +880,14 @@ def main():
         pass
     else:
         root, index = device_root_index(instance, adb)
-        manager = Path(root) / "nx_main" / "MuMuManager.exe" if root else None
+        manager = mumu_locator.find_manager(root) if root else None
         if manager and manager.is_file():
             actual = index_for_serial(manager, serial)
             if actual is not None:
                 index = actual
             info = manager_info(manager, index) if index is not None else {}
             log(f"[连接] 已识别 {describe_instance(index, info, serial) if index is not None else serial}")
+        detect_game_package(adb, serial)
         update_instance(instance_path, instance, adb, serial, root, index)
         log("[2/3] 已按 android_id 识别唯一目标设备")
         log("[3/3] MuMu 与 ADB 已就绪（不开游戏）")
@@ -906,6 +911,9 @@ def main():
         )
         return EXIT_AMBIGUOUS
     if known_index is None:
+        # 配置/缓存都没有时，才用 MuMuManager 的实际实例列表：只有一台就采纳它。
+        known_index = detect_single_instance(manager)
+    if known_index is None:
         log("[身份] 0 台目标设备，且没有明确的已知实例号；拒绝盲扫/自动挑，停止")
         return EXIT_AMBIGUOUS
     info = manager_info(manager, int(known_index))
@@ -927,6 +935,7 @@ def main():
     except TargetResolutionError:
         log("[身份] 启动明确实例后仍无法按 android_id 唯一识别，停止（不自动挑）")
         return EXIT_AMBIGUOUS
+    detect_game_package(adb, serial)
     save_json(CACHE_FILE, {"root": str(root), "vm_index": int(known_index), "adb_serial": serial})
     update_instance(instance_path, instance, adb, serial, root, int(known_index))
     if launched_by_pretask and settings["minimize_after_launch"]:

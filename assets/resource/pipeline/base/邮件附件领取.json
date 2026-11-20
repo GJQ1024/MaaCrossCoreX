@@ -1,6 +1,7 @@
 {
   "邮件附件领取": {
     "next": [
+      "[JumpBack]通用-待机唤醒",
       "[JumpBack]子任务_点击取消",
       "[JumpBack]子任务_关闭公告",
       "[JumpBack]子任务_关闭周年公告",
@@ -31,9 +32,20 @@
       "邮件领取_失败"
     ],
     "next": [
+      "邮件_资源前"
+    ],
+    "next_doc": "进邮箱之前做幂等判定：需要跳过时由 mail_claim_gate 把 next 覆盖为「邮件领取_跳过」正常收尾；on_error 只留给后续节点识别超时等真实故障。2026-11-10 假成功：锚点检查 20.5s 超时被记到本节点，on_error 走跳过终端，0 封也报成功。2026-11-15 资源统计接入：门禁放行后才打 before，拦截时不留孤儿"
+  },
+
+  "邮件_资源前": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "resource_stats",
+    "custom_action_param": { "task": "MailAttachments", "phase": "before" },
+    "next": [
       "邮件领取_锚点检查"
     ],
-    "next_doc": "进邮箱之前做幂等判定：需要跳过时由 mail_claim_gate 把 next 覆盖为「邮件领取_跳过」正常收尾；on_error 只留给后续节点识别超时等真实故障。2026-11-10 假成功：锚点检查 20.5s 超时被记到本节点，on_error 走跳过终端，0 封也报成功"
+    "next_doc": "2026-11-15 资源统计接入：门禁放行后、进邮箱前在主界面拍资源快照"
   },
 
   "邮件领取_跳过": {
@@ -162,7 +174,53 @@
 
   "邮件领取_完成": {
     "next": [
+      "邮件_回主界面"
+    ],
+    "next_doc": "2026-11-15 资源统计接入：完成后先回主界面确认，再读资源差值"
+  },
+
+  "邮件_回主界面": {
+    "next": [
+      "邮件_确认主界面读资源",
+      "[JumpBack]子任务_进入首页"
+    ],
+    "timeout": 60000,
+    "on_error": [
+      "重连网络"
+    ],
+    "next_doc": "2026-11-15 资源统计接入：资源统计必须在主界面顶栏才能读到"
+  },
+
+  "邮件_确认主界面读资源": {
+    "recognition": "OCR",
+    "expected": [
+      "补给站"
+    ],
+    "roi": [934, 582, 176, 127],
+    "pre_wait_freezes": {
+      "time": 1000,
+      "threshold": 0.95
+    },
+    "timeout": 15000,
+    "anchor": "主界面",
+    "action": "DoNothing",
+    "next": [
+      "邮件_资源后"
+    ],
+    "on_error": [
+      "邮件_资源后"
+    ],
+    "next_doc": "2026-11-15 资源统计接入：确认回主界面后读资源；确认失败也尝试读一次，读不到记 null（识别失败），不阻断收尾"
+  },
+
+  "邮件_资源后": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "resource_stats",
+    "custom_action_param": { "task": "MailAttachments", "phase": "after" },
+    "next": [
       "通用_回主界面并结束"
-    ]
+    ],
+    "next_doc": "2026-11-15 资源统计接入：任务结束拍 after，随后交给通用收尾"
   }
 }

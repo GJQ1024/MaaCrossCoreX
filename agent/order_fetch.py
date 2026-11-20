@@ -13,16 +13,17 @@
   held     → 还占着（加了未拉黑）
   released → 已拉黑（记录保留；该 type 可再接新单）
 
-流程（合并任务「订单好友」）：
-  订单好友_前置检查 → 未配置 UID/链接 →「订单好友_跳过」正常结束
+流程（独立任务「订单」）：
+  订单_前置_添加订单群好友 → 未配置 UID/链接 → 跳过加好友，直接进 订单_加好友后衔接
   取下一单     → 面板填 UID 则直接登记；否则网站取 type 尚无 held 的单；没有 →「加好友完毕」
+  加好友完毕   →「订单_加好友后衔接」→ 订单交付/订单库
   输入当前UID  → 输入最后一条 held 的 uid
-  订单好友_拉黑检查 → 没有 held → 直接回首页
+  订单_后置_拉黑订单群好友 → 没有 held → 直接回首页
   取下一待删   → 第一条 held 绑 OCR；没有 held →「清理完毕退出」
   删除登记完成 → 该条改为 released（不删列表）
 
 配置来源（优先级从高到低）：
-  1. GUI 面板「订单好友_好友ID」输入框（存实例配置 TaskItems[订单好友].option[].data）
+  1. GUI 面板输入框（「订单」任务的 订单好友_好友ID，存实例配置 TaskItems[订单].option[].data）
   2. 节点 param.url
   3. config/orders_source.json 的 url
 """
@@ -40,10 +41,11 @@ STATE_PATH = ROOT / "config" / "orders_state.json"
 SOURCE_PATH = ROOT / "config" / "orders_source.json"
 
 # GUI 面板里的任务名与输入项名（须与 interface.json 保持一致）
-TASK_NAME = "订单好友"
+TASK_NAME = "订单"
 OPT_FRIEND = "订单好友_好友ID"
 UID_RE = re.compile(r"\d{4,20}")
-URL_RE = re.compile(r"https?://", re.IGNORECASE)
+URL_RE = re.compile(r"https?://")
+
 
 # Android KEYCODE_* — MuMu/ADB 上 Ctrl+A 常无效或映射错误，改用退格清空。
 KEYCODE_MOVE_END = 123
@@ -115,19 +117,19 @@ def _walk_options(items):
         yield from _walk_options(item.get("option") or item.get("sub_options"))
 
 
-def panel_friend_input():
-    """读实例配置里「订单好友_好友ID」输入框；未填/读不到返回空串。"""
+def panel_friend_input(task_name=TASK_NAME, option_name=OPT_FRIEND):
+    """读实例配置里指定任务的输入框；未填/读不到返回空串。"""
     try:
         from chip_filter_flow import instance_config_path
 
         data = json.loads(instance_config_path().read_text(encoding="utf-8-sig"))
     except Exception:
         return ""
-    item = next((i for i in data.get("TaskItems", []) if i.get("name") == TASK_NAME), None)
+    item = next((i for i in data.get("TaskItems", []) if i.get("name") == task_name), None)
     if not item:
         return ""
     for option in _walk_options(item.get("option")):
-        if option.get("name") != OPT_FRIEND:
+        if option.get("name") != option_name:
             continue
         for value in (option.get("data") or {}).values():
             if isinstance(value, str) and value.strip():
@@ -135,9 +137,9 @@ def panel_friend_input():
     return ""
 
 
-def order_config(param=None):
+def order_config(param=None, task_name=TASK_NAME, option_name=OPT_FRIEND):
     """返回 ("uid", 纯数字) / ("url", 链接) / ("", "")。面板填写优先。"""
-    raw = panel_friend_input()
+    raw = panel_friend_input(task_name, option_name)
     if raw:
         if UID_RE.fullmatch(raw):
             return "uid", raw
@@ -227,39 +229,31 @@ def order_source_ready():
     return True, url
 
 
-@AgentServer.custom_action("基建_订单群_检查配置")
-class BaseOrderGroupCheckConfig(CustomAction):
-    """基建前置：校验 orders_source；配置缺失才整任务退出。"""
-
-    def run(self, context, argv):
-        ok, detail = order_source_ready()
-        if not ok:
-            tip(f"基建·添加订单群好友失败：{detail}")
-            tip("已中止基建（未添加好友、未跑基建、未拉黑）。修好配置后重新勾选再试。")
-            return False
-        tip(f"基建·添加订单群好友：配置正常，开始加好友（url={detail}）")
-        return True
-
-
-@AgentServer.custom_action("订单好友_前置检查")
-class OrderFriendPrecheck(CustomAction):
-    """合并任务入口：没填 UID/链接就整任务跳过，正常结束、不报错。"""
+@AgentServer.custom_action("订单_检查好友配置")
+class OrderGroupCheckConfig(CustomAction):
+    """订单任务加好友前置：填了 UID 就只加这一位；否则用订单页链接；都没配则跳过加好友继续交付。"""
 
     def run(self, context, argv):
         mode, value = order_config()
         if not mode:
-            tip("订单好友：未配置好友 ID / 订单链接，跳过。")
-            context.override_next(argv.node_name, ["订单好友_跳过"])
+            tip("订单：未配置好友 UID / 订单页链接，跳过加好友，继续订单交付。")
+            context.override_next(argv.node_name, ["订单_加好友后衔接"])
             return True
         if mode == "uid":
             state = load_state()
             if any(f.get("uid") == value for f in state["friends"]):
-                tip(f"订单好友：UID {value} 已处理过，跳过。")
-                context.override_next(argv.node_name, ["订单好友_跳过"])
+                tip(f"订单：UID {value} 已处理过，跳过加好友，继续订单交付。")
+                context.override_next(argv.node_name, ["订单_加好友后衔接"])
                 return True
-            tip(f"订单好友：使用面板 UID {value}，开始添加。")
-        else:
-            tip(f"订单好友：使用订单链接 {value}，开始添加。")
+            tip(f"订单：使用面板 UID {value}，只添加这一位。")
+            return True
+        ok, detail = order_source_ready()
+        if not ok:
+            tip(f"订单·添加订单群好友失败：{detail}")
+            tip("跳过加好友，继续订单交付；修好配置后重新勾选再试。")
+            context.override_next(argv.node_name, ["订单_加好友后衔接"])
+            return True
+        tip(f"订单：使用订单页链接 {detail}，开始加好友。")
         return True
 
 

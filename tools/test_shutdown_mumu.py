@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "agent"))
 import ensure_mumu
 import shutdown_mumu
 
-TARGET = "0123456789abcdef"
+TARGET = "<android_id>"
 NO_TARGET = ensure_mumu.NoTarget("目标 android_id 未匹配到设备")
 
 
@@ -36,7 +36,8 @@ def test_instance_index_falls_back_to_port_convention():
     with (
         patch.object(ensure_mumu, "find_mumu", return_value=_found(manager)),
         patch.object(
-            ensure_mumu, "resolve_adb_target", return_value=("127.0.0.1:16416", TARGET)
+            ensure_mumu, "resolve_adb_target",
+            return_value=("127.0.0.1:16416", TARGET),  # MuMu 端口约定值，非设备指纹
         ),
         patch.object(ensure_mumu, "index_for_serial", return_value=None),
     ):

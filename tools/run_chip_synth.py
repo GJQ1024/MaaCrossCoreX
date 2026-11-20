@@ -1,11 +1,11 @@
 """芯片合成干跑/真合入口（不经过壳，直连 ADB）。
 
 用法：
-  python tools/run_chip_synth.py --address 127.0.0.1:16416            # 干跑
+  python tools/run_chip_synth.py --address 127.0.0.1:&lt;port&gt;            # 干跑
   LAA_CHIP_SYNTH_REAL=1 python tools/run_chip_synth.py --address ...  # 真合
 
-选项由环境变量传入：LAA_CHIP_SYNTH_SKILLS=连击,神力 / LAA_CHIP_SYNTH_QUALITIES=R5 /
-LAA_CHIP_SYNTH_THRESHOLD=2/1/1/1。
+选项由环境变量传入：LAA_CHIP_SYNTH_SKILLS=连击,神力 / LAA_CHIP_SYNTH_THRESHOLD=2/1/1/1。
+品质固定为 R5，不再由环境变量控制。
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ class DiagnosticSink(ContextEventSink):
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--adb", default=r"D:\Program Files\Netease\MuMu\nx_device\12.0\shell\adb.exe")
-    parser.add_argument("--address", default="127.0.0.1:16416")
+    parser.add_argument("--address", default="127.0.0.1:5555")
     args = parser.parse_args()
 
     temp_dir = Path(os.environ["TEMP"])

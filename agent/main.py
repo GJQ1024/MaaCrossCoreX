@@ -15,6 +15,10 @@ from bootstrap import ensure_dependencies, prepare_runtime
 prepare_runtime()
 ensure_dependencies()
 
+import diag
+
+diag.setup(_root)
+
 from maa.agent.agent_server import AgentServer
 from maa.toolkit import Toolkit
 
@@ -24,9 +28,11 @@ import ui_common  # noqa: F401
 import ui_mask  # noqa: F401  # 注册通用遮罩/返回/滑动/确认/资源识别与动作
 import doomsday_line  # noqa: F401  # 注册 doomsday_attempts / doomsday_team_power
 import number_lt  # noqa: F401  # 注册 number_lt 自定义识别
+import kagawa_page  # noqa: F401  # 注册 kagawa_page_swipe / kagawa_page_moved
 import alien_shop  # noqa: F401
 import alien_shop_marker  # noqa: F401  # 注册 alien_shop_check / alien_shop_mark（异星灰域周标记）  # 注册 alien_shop_item（异星灰域 名字+代币 双重核对）
 import order_fetch  # noqa: F401  # 注册 取下一单、输入当前UID
+import infra_order  # noqa: F401  # 注册 好友订单库定位/切换复核与交付核验
 from infra_shift import InfraManualSwapAction, InfraShiftAction
 from arena_pipeline import ArenaPipelineAction, ArenaPipelineRecognition
 from combat_autobattle import CombatAutoStateRecognition
@@ -42,8 +48,10 @@ from jdc_select_character import JdcSelectCharacter
 from jdc_build_team import JdcBuildTeam
 from jdc_route_push import JdcRoutePush
 from jdc_reset_state import JdcResetState
+from jdc_entries import JdcEntryConfig, JdcEntryDone, JdcNeedNextEntry, JdcTeamBack
 from weekly_run_counter import WeeklyRunCounterAction, WeeklyRunReached
 from task_memory import TaskMemoryCompleteAction, TaskMemoryGateAction
+from job_next import JobNextHintAction
 from resource_stats import ResourceStatsAction
 from store_purchase import StorePurchaseAction
 from mail_claim import MailClaimAction, MailClaimGateAction
@@ -73,10 +81,15 @@ AgentServer.custom_action("jdc_select_character")(JdcSelectCharacter)
 AgentServer.custom_action("jdc_build_team")(JdcBuildTeam)
 AgentServer.custom_action("jdc_route_push")(JdcRoutePush)
 AgentServer.custom_action("jdc_reset_state")(JdcResetState)
+AgentServer.custom_action("jdc_entry_config")(JdcEntryConfig)
+AgentServer.custom_action("jdc_entry_done")(JdcEntryDone)
+AgentServer.custom_action("jdc_team_back")(JdcTeamBack)
+AgentServer.custom_recognition("jdc_need_next_entry")(JdcNeedNextEntry)
 AgentServer.custom_action("weekly_run_count")(WeeklyRunCounterAction)
 AgentServer.custom_recognition("weekly_run_reached")(WeeklyRunReached)
 AgentServer.custom_action("task_memory_gate")(TaskMemoryGateAction)
 AgentServer.custom_action("task_memory_complete")(TaskMemoryCompleteAction)
+AgentServer.custom_action("job_next_hint")(JobNextHintAction)
 AgentServer.custom_action("resource_stats")(ResourceStatsAction)
 AgentServer.custom_action("store_purchase")(StorePurchaseAction)
 AgentServer.custom_action("mail_claim")(MailClaimAction)
@@ -87,7 +100,7 @@ AgentServer.custom_action("account_switch")(AccountSwitchAction)
 
 print(
     "[agent] custom actions ready: "
-    "基建_订单群_检查配置, 取下一单, 输入当前UID, 取下一待删好友, 删除登记完成"
+    "订单_检查好友配置, 取下一单, 输入当前UID, 取下一待删好友, 删除登记完成"
 )
 
 

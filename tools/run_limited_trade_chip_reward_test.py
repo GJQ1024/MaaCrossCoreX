@@ -27,7 +27,7 @@ from limited_trade import LimitedTradeSetupAction
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--rarity", choices=("R4", "R5"), required=True)
-    parser.add_argument("--adb", default=r"E:\MuMuPlayer-12.0\shell\adb.exe")
+    parser.add_argument("--adb", default="adb")
     parser.add_argument("--address", default=os.environ.get("ADB_SERIAL", ""),
                         help="ADB serial（不写死端口；不填则读环境变量 ADB_SERIAL）")
     args = parser.parse_args()

@@ -1,0 +1,109 @@
+{
+    "订单_任务": {
+        "doc": "订单任务入口：可选加好友 → 订单交付/订单库 → 可选拉黑。订单相关流程不再挂在基建任务上。",
+        "recognition": "DirectHit",
+        "next": [
+            "订单_前置_添加订单群好友",
+            "订单_交付入口"
+        ]
+    },
+    "订单_前置_添加订单群好友": {
+        "enabled": false,
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "订单_检查好友配置"
+            }
+        },
+        "next": [
+            "订单好友添加流程"
+        ]
+    },
+    "订单_加好友后衔接": {
+        "doc": "加好友完成（或跳过/已处理过）后进入订单交付段。",
+        "next": [
+            "订单_交付入口"
+        ]
+    },
+    "订单_交付入口": {
+        "doc": "先导航到自己的订单库；导航失败按任务失败收尾。",
+        "recognition": "DirectHit",
+        "next": [
+            "[JumpBack]导航到_自己的订单库",
+            "订单_交付就绪"
+        ],
+        "on_error": [
+            "订单_错误收尾_失败"
+        ],
+        "timeout": 60000
+    },
+    "订单_交付就绪": {
+        "doc": "确认已在订单库页（OCR 与 导航识别_自己的订单库 同参），再看有没有可交付入口；没有可交付的订单则正常收尾，不判失败。",
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "好友交付记录",
+                    "制作素材"
+                ],
+                "roi": [
+                    20,
+                    60,
+                    180,
+                    460
+                ],
+                "threshold": 0.2
+            }
+        },
+        "action": "DoNothing",
+        "next": [
+            "基建_交易"
+        ],
+        "on_error": [
+            "订单_收尾"
+        ],
+        "timeout": 12000
+    },
+    "订单_收尾": {
+        "next": [
+            "订单_后置_拉黑订单群好友",
+            "订单_完成"
+        ]
+    },
+    "订单_后置_拉黑订单群好友": {
+        "enabled": false,
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "订单好友_拉黑检查"
+            }
+        },
+        "next": [
+            "拉黑好友流程"
+        ]
+    },
+    "订单_完成": {
+        "recognition": "DirectHit",
+        "next": [
+            "通用-返回主页"
+        ]
+    },
+    "订单_错误收尾": {
+        "next": [
+            "订单_后置_拉黑订单群好友",
+            "通用-返回主页"
+        ]
+    },
+    "订单_错误收尾_失败": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "task_fail",
+        "custom_action_param": {
+            "reason": "订单：交付链识别失败，收尾后判任务失败",
+            "cleanup_entry": "订单_错误收尾"
+        },
+        "next": [],
+        "on_error": []
+    }
+}

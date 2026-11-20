@@ -38,7 +38,7 @@ def test_offline_connection_recovers_without_server_restart():
         patch.object(ensure_mumu, "connection_usable", side_effect=[False, True]),
     ):
         assert ensure_mumu.recover_existing_adb(
-            Path("adb.exe"), "127.0.0.1:16416", {}
+            Path("adb.exe"), "127.0.0.1:<port>", {}
         )
     commands = [call.args[0][1] for call in mocked_run.call_args_list]
     assert commands == ["disconnect", "connect"]
@@ -51,7 +51,7 @@ def test_other_online_device_blocks_global_adb_restart():
         patch.object(ensure_mumu, "adb_devices", return_value={"emulator-5554": "device"}),
     ):
         assert not ensure_mumu.recover_existing_adb(
-            Path("adb.exe"), "127.0.0.1:16416", {}
+            Path("adb.exe"), "127.0.0.1:<port>", {}
         )
     assert all(call.args[0][1] != "kill-server" for call in mocked_run.call_args_list)
 
@@ -117,7 +117,7 @@ def test_update_instance_syncs_detected_mumu_launcher():
             config_path,
             {},
             root / "shell" / "adb.exe",
-            "127.0.0.1:16416",
+            "127.0.0.1:<port>",
             root,
             1,
         )

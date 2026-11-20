@@ -107,7 +107,7 @@ def test_insufficient_tokens_defers_only_current_item():
         }, ensure_ascii=False))) is None
 
 
-def _write_instance(path, selected, resource="官服", serial="127.0.0.1:16416"):
+def _write_instance(path, selected, resource="官服", serial="127.0.0.1:<port>"):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({
         "Resource": resource,

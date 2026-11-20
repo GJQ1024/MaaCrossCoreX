@@ -128,6 +128,48 @@ def policy_path(account: str | None = None) -> Path:
     return memory_dir() / f"{account or _account_id()}.policy.json"
 
 
+def schedule_path() -> Path:
+    """任务级调度状态（由壳写入）：config/job-schedules.json。"""
+    override = os.environ.get("JOB_SCHEDULE_PATH")
+    return Path(override) if override else PROJECT_ROOT / "config" / "job-schedules.json"
+
+
+def schedule_job_due(job: str, now: datetime | None = None) -> bool:
+    """调度触发判定：该任务已启用且 NextRunAt 已到期，才豁免 480 分钟门禁。
+
+    手动触发（未到期）仍然走原冷却逻辑，避免门禁把调度拦成「白跑一轮」。
+    """
+    if not job:
+        return False
+    now = now or datetime.now()
+    try:
+        data = json.loads(schedule_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        log.warning("调度文件读取失败，按未到期处理：%s", exc)
+        return False
+
+    for item in data.get("jobs", []):
+        if not isinstance(item, dict):
+            continue
+        if item.get("hintId") != job and item.get("entry") != job:
+            continue
+        if not item.get("enabled") or not item.get("nextRunAt"):
+            continue
+        try:
+            next_run = datetime.fromisoformat(str(item["nextRunAt"]))
+        except ValueError:
+            continue
+        # 文件里的时间带 +08:00（壳写入/手工编辑都可能带时区），now 是本地 naive，
+        # 直接比较会抛 TypeError 让门禁整个失效，统一折算成本地 naive。
+        if next_run.tzinfo is not None:
+            next_run = next_run.astimezone().replace(tzinfo=None)
+        if next_run - timedelta(minutes=2) <= now <= next_run + timedelta(hours=6):
+            log.info("调度触发 %s：NextRunAt=%s，豁免冷却门禁", job, item["nextRunAt"])
+            return True
+
+    return False
+
+
 def skip_event_path(account: str | None = None) -> Path:
     """跳过事件流：与完成记录分开存放，串跑复盘可区分「跳过」与「完成」。"""
     return memory_dir() / f"{account or _account_id()}.events.jsonl"
@@ -343,6 +385,18 @@ class TaskMemoryGateAction(CustomAction):
             # 参数错误宁可放行并告警，不让用户任务永远跑不了
             log.error("门禁参数解析失败，按放行处理：%s", exc)
             return True
+        schedule_job = ""
+        try:
+            raw = getattr(argv, "custom_action_param", None) or "{}"
+            param = json.loads(raw)
+            if isinstance(param, str):
+                param = json.loads(param)
+            if isinstance(param, dict):
+                schedule_job = str(param.get("schedule_job") or "")
+        except (json.JSONDecodeError, ValueError):
+            schedule_job = ""
+        if schedule_job and schedule_job_due(schedule_job):
+            force = True
         decision = TaskMemoryStore(store_path()).check(task, policy, force=force)
         if decision.allowed:
             log.info("任务记忆放行 %s：今日 %d/%s%s", task, decision.count,

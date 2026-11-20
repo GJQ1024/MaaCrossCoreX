@@ -156,7 +156,7 @@ def main():
     tasker = Tasker()
     tasker.bind(resource=res, controller=ctrl)
 
-    account = "JCZX_verify"
+    account = "verify_account"
     task = "DailyRewards"
 
     print("=" * 70)

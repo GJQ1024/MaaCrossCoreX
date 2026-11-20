@@ -27,9 +27,12 @@ MASK_SPECS = {
     },
     "battle_result": {
         "kind": "ocr", "roi": [0, 20, 760, 240],
-        "expected": ["战斗结束", "战斗胜利", "战斗失败", "扫荡成功"],
+        # 2026-11-11 实机：扫荡结算页艺术字标题 OCR 恒为「扫荡成坊」(0.8427)，
+        # 同页「伤害统计」稳定 0.9917；只写「扫荡成功」永不命中，会漏关整页。
+        "expected": ["战斗结束", "战斗胜利", "战斗失败", "扫荡成功", "扫荡成坊", "伤害统计"],
         "target": [640, 400],
-        "verify_absent": ["战斗结束", "战斗胜利", "战斗失败", "扫荡成功"], "retries": 2, "delay": 1.2,
+        "verify_absent": ["战斗结束", "战斗胜利", "战斗失败", "扫荡成功", "扫荡成坊", "伤害统计"],
+        "retries": 2, "delay": 1.2,
     },
     "chip_warehouse_full": {
         "kind": "ocr", "roi": [250, 160, 780, 400],
@@ -75,6 +78,33 @@ SWIPE_PRESETS = {
         "begin": [1100, 560], "end": [1100, 160], "duration": 700,
         "repeat": 8, "stop_on_stable": True,
     },
+}
+
+# 主界面守卫（ensure_main）：任务入口「进入前一次性确认 + 有界自救」的唯一参数来源。
+# 判据：右下「补给站」OCR 与顶栏任一资源图标同帧命中（两者取与，避免子页残留顶栏被误判为主界面），
+# 且同帧没有顶层遮罩（anchor/图标都在底栏与顶栏，模态弹窗只盖中央，单看它们无法排除
+# 「主界面 + 付费/公告弹窗」；blocker_presets 复用通用遮罩判据，命中即判 not_main，
+# 由恢复阶梯关闭后重判。2026-11-17 G4 帧 s10_promo_popup.png 即该假通过现场）。
+# 恢复阶梯：待机点时钟 → 关遮罩 → 取消二次确认 → 点首页按钮 → 点左上返回箭头；
+# 绝不盲按 BACK：主界面按 BACK 会退到 B 站游戏中心（见 BACK_TABLE 注释与 11-16 冷启动事故）。
+HOME_GUARD = {
+    "anchor": {"roi": [934, 582, 176, 127], "expected": ["补给站"], "ocr_threshold": 0.6},
+    "resource_roi": [0, 0, 1280, 120],
+    "resource_templates": ["HomeResourceAp.png", "HomeResourceCoin.png", "HomeResourceGem.png"],
+    "resource_threshold": 0.6,
+    "blocker_presets": list(MASK_ANY_ORDER),
+    "standby": {
+        "roi": [0, 540, 320, 140],
+        "pattern": r"^[0-2]?\d\s*[:：.]\s*[0-5]\d",
+        "threshold": 0.85,
+    },
+    "home_templates": ["StartUp/HomeButton.png", "StartUp/HomeButton1.png"],
+    "home_roi": [180, 10, 100, 70],
+    "back_template": "StartUp/BackButton.png",
+    "back_roi": [0, 0, 200, 90],
+    "template_threshold": 0.8,
+    "max_rounds": 4,
+    "step_wait": 1.5,
 }
 
 # 返回口径查表：anchor 是页面锚点，action 决定返回动作。

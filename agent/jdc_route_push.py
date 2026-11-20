@@ -82,6 +82,129 @@ JDC_CONFIRM_ROI = [
     41
 ]
 
+# 2026-11-11 23:24 实机帧（on_error/2026.11.11-23.24.02.796_模拟军演_角斗场_推关.png）：
+# 关卡详情页底部「当前编队」+ 5 个空槽位显示 NONE，确定按钮置灰点不动。
+# 推关若在对空队点确定，只会原地打转直到 20 分钟超时，必须先回编队入口。
+JDC_TEAM_LABEL_ROI = [
+    9,
+    611,
+    129,
+    47
+]
+
+JDC_TEAM_SLOTS_ROI = [
+    170,
+    598,
+    580,
+    72
+]
+
+
+# 推关节点的默认出边：战斗结束先判胜负与奖励，再回到选关。
+# 2026-11-20 实机：编队为空/角色为空的分支把出边覆盖成 [编队入口] 后没有复原，
+# 补完人入战后 pipeline 在「战斗胜利」结算页只找「当前编队」，
+# 00:14:49–00:27:14 空转 12 分钟才被游戏自身退回关卡页。
+JDC_ROUTE_DEFAULT_NEXT = [
+    "模拟军演_角斗场_全部领取",
+    "模拟军演_角斗场_战斗失败",
+    "模拟军演_角斗场_战斗胜利_等待"
+]
+
+
+def _dump_jdc_frame(
+    context,
+    name
+):
+    """取证：把当前整屏存到 debug/，失败不影响主流程。"""
+    try:
+        import os
+
+        import numpy as np
+        from PIL import Image
+        from pathlib import Path
+
+        image = screencap(context)
+        directory = Path(__file__).resolve().parent.parent / "debug"
+        os.makedirs(directory, exist_ok=True)
+        path = directory / name
+        Image.fromarray(np.asarray(image)[:, :, ::-1]).save(path)
+        print(f"[角斗场] 已保存取证帧 {path}")
+        return str(path)
+    except Exception as exc:  # noqa: BLE001 取证失败不阻断任务
+        print(f"[角斗场] 保存取证帧 {name} 失败：{exc}")
+        return None
+
+
+def _ocr_texts(
+    context,
+    image,
+    node_name,
+    expected,
+    roi
+):
+    detail = context.run_recognition(
+        node_name,
+        image,
+        pipeline_override={
+            node_name: {
+                "recognition": "OCR",
+                "expected": expected,
+                "roi": roi
+            }
+        }
+    )
+
+    results = []
+
+    collect_ocr_results(
+        detail,
+        results,
+        set()
+    )
+
+    return [
+        normalize_text(
+            item["text"]
+        )
+        for item in results
+    ]
+
+
+def on_team_page(
+    context,
+    image
+):
+    """当前页是否是编队页（底部有「当前编队」标签）。"""
+    return any(
+        "当前编队" in text
+        for text in _ocr_texts(
+            context,
+            image,
+            "角斗场_编队标签OCR",
+            "当前编队",
+            JDC_TEAM_LABEL_ROI
+        )
+    )
+
+
+def count_empty_team_slots(
+    context,
+    image,
+    roi
+):
+    """数底部编队区里显示 NONE 的空槽位数。"""
+    return sum(
+        1
+        for text in _ocr_texts(
+            context,
+            image,
+            "角斗场_编队槽位OCR",
+            "NONE",
+            roi
+        )
+        if "NONE" in text.upper()
+    )
+
 
 def screencap(
     context
@@ -988,7 +1111,8 @@ def choose_stage(
 def enter_stage(
     context,
     selected,
-    param
+    param,
+    node_name=None
 ):
     round_number = selected[
         "round"
@@ -1070,6 +1194,46 @@ def enter_stage(
 
         return False
 
+    # 注意：last_round 只能在「本关真的入战」时推进（见下方点确定前）。
+    # 空队伍分支会在补人前调用本函数，若提前写盘，补完人回来
+    # choose_stage 会把 <= N 全部过滤掉，该关被直接跳过。
+
+    team_roi = param.get(
+        "team_roi",
+        JDC_TEAM_SLOTS_ROI
+    )
+
+    empty_slots = count_empty_team_slots(
+        context,
+        screencap(context),
+        team_roi
+    )
+
+    # 空队时点确定不落地，只会在关卡详情页与失败页之间空转到 20 分钟超时。
+    # 先回编队入口补人，再回来推关（不点确定、不把 phase 置成 battle）。
+    if empty_slots > 0:
+        print(
+            "[角斗场] "
+            f"关卡详情页编队为空（NONE×{empty_slots}），"
+            "不点确定，改走编队入口"
+        )
+
+        _dump_jdc_frame(
+            context,
+            f"jdc_empty_team_round{round_number}.png"
+        )
+
+        if node_name:
+            context.override_next(
+                node_name,
+                [
+                    "模拟军演_角斗场_编队入口"
+                ]
+            )
+
+        return True
+
+    # 走到这里说明本关已确认、马上点确定入战，才算「打完」并推进回合。
     jdc.jdc_route_last_round = (
         round_number
     )
@@ -1170,6 +1334,20 @@ class JdcRoutePush(
             except Exception:
                 pass
 
+            # 每次进入推关先把出边恢复成「战斗结果」三选一：
+            # 上一次因编队为空/角色为空把出边覆盖成 [编队入口] 后，
+            # 必须在这里清掉，否则补完人入战后结算页无人收尾。
+            if argv.node_name:
+                context.override_next(
+                    argv.node_name,
+                    list(JDC_ROUTE_DEFAULT_NEXT)
+                )
+
+                print(
+                    "[角斗场] 推关出边已复位："
+                    "全部领取/战斗失败/战斗胜利_等待"
+                )
+
             roi = param.get(
                 "stage_search_roi",
                 JDC_STAGE_SEARCH_ROI
@@ -1200,6 +1378,36 @@ class JdcRoutePush(
                     ]
                 )
             )
+
+            if not jdc.jdc_preliminary:
+                image = screencap(
+                    context
+                )
+
+                _dump_jdc_frame(
+                    context,
+                    "jdc_empty_roster.png"
+                )
+
+                if on_team_page(context, image):
+                    print(
+                        "[角斗场] 已获得角色为空且当前在编队页，"
+                        "回编队入口补人，不再继续推关"
+                    )
+
+                    context.override_next(
+                        argv.node_name,
+                        [
+                            "模拟军演_角斗场_编队入口"
+                        ]
+                    )
+
+                    return True
+
+                print(
+                    "[角斗场] 已获得角色为空（本轮未经选角色或角色池识别为空），"
+                    "当前不在编队页，先按关卡页流程继续；本帧已留证"
+                )
 
             selected = None
             swipe_count = 0
@@ -1262,7 +1470,8 @@ class JdcRoutePush(
                 if enter_stage(
                     context,
                     selected,
-                    param
+                    param,
+                    argv.node_name
                 ):
                     return True
 

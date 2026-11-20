@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""JCZX 实例显示模式管理（仓库版；本地入口 apps/crosscore-auto/tools/device_mode.py 只做桥接）。
+"""<实例> 实例显示模式管理（仓库版；本地入口 apps/crosscore-auto/tools/device_mode.py 只做桥接）。
 
-MuMu 实例 JCZX(index 1) 本身配置为 tablet.3 = 1280x720 横屏 + window_auto_rotate，
+MuMu 实例 <实例>(index 1) 本身配置为 tablet.3 = 1280x720 横屏 + window_auto_rotate，
 但安卓侧 wm size 若与窗口方向不一致会导致 MuMu 窗口信箱化/压扁。
 本工具统一管理横屏（自动化用）与可选竖屏还原，并带画面有效性预检。
 
@@ -74,7 +74,7 @@ def require_serial() -> str:
 
 def run_adb(*args, check=False):
     cmd = [adb_path(), "-s", require_serial(), *args]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if check and r.returncode != 0:
         raise RuntimeError(f"adb failed: {r.stderr}")
     return r.stdout.strip()
@@ -128,7 +128,7 @@ def check_host_window(vm_index: str | None = None) -> dict:
     try:
         r = subprocess.run(
             [str(manager), "info", "-v", idx],
-            capture_output=True, text=True, errors="replace", timeout=15,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         payload = r.stdout[r.stdout.find("{"):]

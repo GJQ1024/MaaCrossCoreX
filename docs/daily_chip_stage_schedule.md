@@ -19,4 +19,4 @@ MFA 在每次生成“每日探索 -> 关卡选择”设置面板时读取电脑
 
 可复现实现位于 UI 仓 [MCCAvalonia](https://github.com/MAACrossCore/MCCAvalonia)
 的 `TaskOptionGenerator.DailyChipStageSchedule`；后续调整开放日时改该表并发新 UI
-Release，再 bump Framework `tools/install.py` 的 `MFA_VERSION`。
+Release，再 bump Framework `install.yml` 的 `MFAA_VERSION`。

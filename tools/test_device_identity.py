@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """身份锚点离线用例：ensure_mumu（pretask）与 shell_device_binding（binder）必须同一口径。
 
-用例里用虚构的 android_id / 序列号模拟「一台真机 + 一台 MuMu 实例」：
-  真机             android_id=<非目标>
-  emulator-5556    android_id=<目标>
-同一台的另一入口 127.0.0.1:16416 用于验证多入口去重。
+候选取自一次真实日志（当时判成 2 台歧义），此处已脱敏为等价假数据：
+  另一台真机 serial-real   android_id=fedcba9876543210（非目标）
+  emulator-5554            android_id=0123456789abcdef（目标）
+同一台的另一入口 127.0.0.1:5554，用于验证多入口去重。
 """
 
 from __future__ import annotations
@@ -25,9 +25,9 @@ import shell_device_binding  # noqa: E402
 
 TARGET = "0123456789abcdef"
 REAL = "fedcba9876543210"
-REAL_SERIAL = "R58M0000AAA"
-EMULATOR = "emulator-5556"
-LOOPBACK = "127.0.0.1:16416"
+REAL_SERIAL = "serial-real"
+EMULATOR = "emulator-5554"
+LOOPBACK = "127.0.0.1:5554"
 
 
 def _quiet(*_args, **_kwargs):
@@ -47,7 +47,10 @@ def resolve_offline(devices, ids, preferred=""):
 
 
 def select_binder(devices):
-    with patch.object(shell_device_binding, "log", _quiet):
+    with (
+        patch.object(shell_device_binding, "log", _quiet),
+        patch.dict(os.environ, {"MFA_TARGET_ANDROID_ID": TARGET}),
+    ):
         return shell_device_binding.select_target(devices)
 
 
@@ -79,7 +82,8 @@ def _real_and_emulator():
 def test_default_anchor_matches_binder_default():
     with patch.dict(os.environ, {}, clear=True):
         assert device_identity.target_android_id() == ""
-    assert device_identity.DEFAULT_TARGET_ANDROID_ID == ""
+    with patch.dict(os.environ, {"MFA_TARGET_ANDROID_ID": TARGET}, clear=True):
+        assert device_identity.target_android_id() == TARGET
 
 
 def test_real_device_is_filtered_and_emulator_is_unique_hit():
@@ -140,7 +144,8 @@ def test_real_device_only_appears_in_filter_summary():
         assert ensure_mumu.resolve_adb_target("adb.exe") == (EMULATOR, TARGET)
     touched = [line for line in lines if REAL_SERIAL in line]
     summaries = [line for line in lines if "过滤掉 1 台非目标设备" in line]
-    assert touched == [] and len(summaries) == 1
+    # P1 起摘要带实际读到的 serial=android_id，真机只允许出现在这一行摘要里
+    assert len(summaries) == 1 and touched == summaries
 
 
 def test_landscape_filters_real_device_and_unique_hit():

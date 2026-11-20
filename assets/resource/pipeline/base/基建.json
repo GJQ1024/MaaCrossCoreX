@@ -55,6 +55,60 @@
             }
         }
     },
+    "基建_换班入口": {
+        "recognition": "DirectHit",
+        "next": [
+            "基建_主界面门禁"
+        ],
+        "doc": "任务级定时的独立换班入口：只进基地 → 驻员状况 → 换班段，不跑收菜/制造素材/订单。2026-11-17 资源前回归修复：入口只走「基建_主界面门禁」一次性确认主界面再放行到 基建_资源前；原先并列的 DirectHit 资源前 会把末尾 [JumpBack]子任务_进入首页 变成死代码，且把 JumpBack 前置会重评 next 无限循环。"
+    },
+    "基建_资源前": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "InfraShift", "phase": "before" },
+        "next": [
+            "基地_换班入口"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：换班前在主界面拍资源快照"
+    },
+    "基建_主界面门禁": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ensure_main",
+        "custom_action_param": {
+            "label": "基建_主界面门禁",
+            "max_rounds": 4,
+            "cleanup_entry": "通用_回主界面并结束"
+        },
+        "next": [
+            "基建_资源前"
+        ],
+        "next_doc": "2026-11-17 资源前回归修复：与 芯片_主界面门禁 同型。门禁内一次性确认主界面（补给站 OCR + 顶栏资源图标同帧命中），不满足则「待机点时钟 → 关遮罩 → 取消二次确认 → 点首页按钮 → 点左上返回箭头」有界自救（最多 4 轮，不盲按 BACK）；失败留帧 + diag.fail + 收尾后判任务失败。参数集中在 agent/ui_common.py::HOME_GUARD。"
+    },
+    "基地_换班入口": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    543,
+                    561,
+                    168,
+                    147
+                ],
+                "template": "Infrastructures/Infr_JD.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 3000,
+        "next": [
+            "基建_驻员状况",
+            "基地_换班入口"
+        ],
+        "doc": "只点击主界面「基地」进入，不接收取资源分支；进入后直接走驻员状况 → 换班门禁。"
+    },
     "基地": {
         "recognition": {
             "type": "TemplateMatch",
@@ -116,8 +170,8 @@
         }
     },
     "基建": {
+        "doc": "只做收资源与换班。订单相关（加好友/交付/订单库/拉黑）已拆到独立「订单」任务，本任务不再进入订单链。",
         "next": [
-            "基建_前置_添加订单群好友",
             "基建_主体"
         ],
         "$__mpe_code": {
@@ -143,64 +197,8 @@
             }
         }
     },
-    "基建_前置_添加订单群好友": {
-        "enabled": false,
-        "recognition": "DirectHit",
-        "action": {
-            "type": "Custom",
-            "param": {
-                "custom_action": "基建_订单群_检查配置"
-            }
-        },
-        "next": [
-            "订单好友添加流程"
-        ],
-        "$__mpe_code": {
-            "position": {
-                "x": 6400,
-                "y": 335
-            }
-        }
-    },
-    "基建_订单群_添加后衔接": {
-        "doc": "兼容旧 override；等价于直接进基建_主体（原整段基建，含换班/交付）。",
-        "next": [
-            "基建_主体"
-        ],
-        "$__mpe_code": {
-            "position": {
-                "x": 6520,
-                "y": 480
-            }
-        }
-    },
-    "基建_订单群_拉黑后衔接": {
-        "doc": "拉黑结束，任务收尾结束（勿再用 JumpBack 回主页，会与衔接节点死循环空点）。",
-        "next": [
-            "基建_完成"
-        ],
-        "$__mpe_code": {
-            "position": {
-                "x": 6960,
-                "y": 480
-            }
-        }
-    },
-    "基建_收尾": {
-        "next": [
-            "基建_后置_拉黑订单群好友",
-            "基建_完成"
-        ],
-        "$__mpe_code": {
-            "position": {
-                "x": 6840,
-                "y": 335
-            }
-        }
-    },
     "基建_错误收尾": {
         "next": [
-            "基建_后置_拉黑订单群好友",
             "通用-返回主页"
         ],
         "$__mpe_code": {
@@ -215,34 +213,12 @@
         "action": "Custom",
         "custom_action": "task_fail",
         "custom_action_param": {
-            "reason": "基建：主体/他人交付识别失败，收尾后判任务失败",
+            "reason": "基建：主体识别失败，收尾后判任务失败",
             "cleanup_entry": "基建_错误收尾"
         },
         "next": [],
         "on_error": [],
-        "next_doc": "2026-11-04 收尾链不可再当成功出口：task_fail 在动作内跑完基建_错误收尾（含拉黑/返回主页）后返回 False；next/on_error 留空，避免收尾识别把 error_handling 清零"
-    },
-    "基建_后置_拉黑订单群好友": {
-        "enabled": false,
-        "next": [
-            "拉黑好友流程"
-        ],
-        "$__mpe_code": {
-            "position": {
-                "x": 7080,
-                "y": 335
-            }
-        }
-    },
-    "基建_完成": {
-        "recognition": "DirectHit",
-        "action": "DoNothing",
-        "$__mpe_code": {
-            "position": {
-                "x": 7200,
-                "y": 335
-            }
-        }
+        "next_doc": "2026-11-04 收尾链不可再当成功出口：task_fail 在动作内跑完基建_错误收尾（返回主页）后返回 False；next/on_error 留空，避免收尾识别把 error_handling 清零"
     },
     "基建_交付": {
         "next": [
@@ -276,8 +252,7 @@
         "post_delay": 2000,
         "next": [
             "基建_行星指挥部_返回",
-            "基建_交付默认确认",
-            "基建_制作素材"
+            "基建_交付默认确认"
         ],
         "$__mpe_code": {
             "position": {
@@ -322,6 +297,7 @@
             "threshold": 0.95
         },
         "next": [
+            "基建_交付核验_好友",
             "基建_拜访好友结束",
             "[JumpBack]基建_构建票18_可交付",
             "[JumpBack]基建_构建票16_可交付",
@@ -330,10 +306,12 @@
             "[JumpBack]基建_构建票6_可交付",
             "[JumpBack]基建_经验_可交付",
             "[JumpBack]基建_星币_可交付",
+            "[JumpBack]基建_星币_普通_可交付",
+            "[JumpBack]基建_订单下滑",
             "[JumpBack]基建_拜访下一位好友"
         ],
         "on_error": [
-            "基建_错误收尾_失败"
+            "订单_错误收尾_失败"
         ],
         "$__mpe_code": {
             "position": {
@@ -699,7 +677,14 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "infra_friend_switch",
+                "custom_action_param": {
+                    "max_wait": 8.0,
+                    "reason": "基建_拜访下一位好友"
+                }
+            }
         },
         "$__mpe_code": {
             "position": {
@@ -760,14 +745,18 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target_offset": [
-                    103,
-                    371,
-                    0,
-                    0
-                ]
+                "custom_action": "infra_open_friend",
+                "custom_action_param": {
+                    "target_offset": [
+                        103,
+                        371
+                    ],
+                    "attempts": 2,
+                    "max_wait": 6.0,
+                    "reason": "基建_拜访好友1"
+                }
             }
         },
         "post_delay": 1000,
@@ -792,7 +781,7 @@
         },
         "post_delay": 1000,
         "next": [
-            "基建_收尾"
+            "订单_收尾"
         ],
         "$__mpe_code": {
             "position": {
@@ -1537,7 +1526,6 @@
         },
         "next": [
             "[JumpBack]基建_换班确认",
-            "基建_交易",
             "基建_退出",
             "[JumpBack]子任务_点击返回"
         ],
@@ -1578,23 +1566,46 @@
         "recognition": {
             "type": "TemplateMatch",
             "param": {
-                "roi": [
-                    422,
-                    423,
-                    145,
-                    140
-                ],
-                "template": "Infrastructures/Infr_Recourse.png"
+                "template": [
+                    "Infrastructures/Infr_Recourse.png",
+                    "Infrastructures/Infr_Recourse2.png",
+                    "Infrastructures/Infr_Recourse3.png"
+                ]
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "verified_click",
+                "custom_action_param": {
+                    "target_offset": [
+                        30,
+                        32
+                    ],
+                    "verify_roi_offset": [
+                        -6,
+                        -8,
+                        72,
+                        60
+                    ],
+                    "change_threshold": 10.0,
+                    "retries": 2,
+                    "delay": 1.2,
+                    "on_fail": [
+                        "基建_驻员状况"
+                    ],
+                    "reason": "基建_收取资源"
+                }
+            }
         },
-        "post_delay": 2000,
+        "max_hit": 4,
+        "post_delay": 600,
         "next": [
             "[JumpBack]子任务_获得物品",
+            "基建_收取资源",
             "基建_驻员状况"
         ],
+        "next_doc": "2026-11-18 P-112：资源点改为全屏模板三色匹配（粉/紫/红），点击落点=识别框偏移[30,32]（落在晶体本体，不是框中心），点后按识别框相对区[-6,-8,72,60]复核画面变化，未生效重试 2 次；耗尽则 diag.fail 并兜底到 基建_驻员状况，不留静默假成功。模板2/3 取自 2026-11-18 MuMu 1280×720 实机帧（资源满仓 MAX 态）。",
         "$__mpe_code": {
             "position": {
                 "x": 7372,
@@ -1606,24 +1617,46 @@
         "recognition": {
             "type": "TemplateMatch",
             "param": {
-                "roi": [
-                    412,
-                    425,
-                    331,
-                    288
-                ],
-                "template": "Infrastructures/Infr_Recourse.png"
+                "template": [
+                    "Infrastructures/Infr_Recourse.png",
+                    "Infrastructures/Infr_Recourse2.png",
+                    "Infrastructures/Infr_Recourse3.png"
+                ]
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "verified_click",
+                "custom_action_param": {
+                    "target_offset": [
+                        30,
+                        32
+                    ],
+                    "verify_roi_offset": [
+                        -6,
+                        -8,
+                        72,
+                        60
+                    ],
+                    "change_threshold": 10.0,
+                    "retries": 2,
+                    "delay": 1.2,
+                    "on_fail": [
+                        "基建_交付默认确认"
+                    ],
+                    "reason": "基建_收取资源_不换班"
+                }
+            }
         },
-        "post_delay": 2000,
+        "max_hit": 4,
+        "post_delay": 600,
         "next": [
             "[JumpBack]子任务_获得物品",
             "基建_收取资源_不换班",
             "基建_交付默认确认"
         ],
+        "next_doc": "2026-11-18 P-112：与 基建_收取资源 同修法（全屏三色模板 + 识别框偏移落点 + 相对复核 + 重试）。max_hit=4 封顶自转；复核耗尽改道 基建_交付默认确认 并记 diag。",
         "$__mpe_code": {
             "position": {
                 "x": 9292,
@@ -1693,9 +1726,14 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "coin",
+                    "variant": "rare",
+                    "reason": "基建_星币_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -1708,6 +1746,44 @@
             "position": {
                 "x": 13076,
                 "y": 876
+            }
+        }
+    },
+    "基建_星币_普通_可交付": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "infra_coin_order",
+                "roi": [
+                    272,
+                    89,
+                    909,
+                    603
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "coin",
+                    "variant": "normal",
+                    "reason": "基建_星币_普通_可交付"
+                }
+            }
+        },
+        "post_delay": 1000,
+        "next": [
+            "基建_自己交付是",
+            "基建_自己交付否",
+            "[JumpBack]子任务_获得物品"
+        ],
+        "doc": "普通（非稀有）星币订单：卡头没有「稀有」标时命中同卡位的交付按钮；稀有卡由 基建_星币_可交付 的稀有卡头判据先行处理，本节点遇到稀有卡返回未命中，不改变稀有语义。",
+        "$__mpe_code": {
+            "position": {
+                "x": 13220,
+                "y": 1080
             }
         }
     },
@@ -1776,9 +1852,13 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "build",
+                    "reason": "基建_构建票10_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -1859,9 +1939,13 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "build",
+                    "reason": "基建_构建票16_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -1942,9 +2026,13 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "build",
+                    "reason": "基建_构建票18_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -2025,9 +2113,13 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "build",
+                    "reason": "基建_构建票6_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -2108,9 +2200,13 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "build",
+                    "reason": "基建_构建票8_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -2189,9 +2285,13 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": true
+                "custom_action": "infra_deliver_order",
+                "custom_action_param": {
+                    "kind": "exp",
+                    "reason": "基建_经验_可交付"
+                }
             }
         },
         "post_delay": 1000,
@@ -2208,11 +2308,9 @@
         }
     },
     "基建_自己交付": {
-        "post_wait_freezes": {
-            "time": 2000,
-            "threshold": 0.95
-        },
+        "post_delay": 2000,
         "next": [
+            "基建_交付核验",
             "[JumpBack]基建_构建票18_可交付",
             "[JumpBack]基建_构建票16_可交付",
             "[JumpBack]基建_构建票10_可交付",
@@ -2220,8 +2318,10 @@
             "[JumpBack]基建_构建票6_可交付",
             "[JumpBack]基建_经验_可交付",
             "[JumpBack]基建_星币_可交付",
+            "[JumpBack]基建_星币_普通_可交付",
+            "[JumpBack]基建_订单下滑",
             "基建_拜访好友",
-            "基建_收尾"
+            "订单_收尾"
         ],
         "$__mpe_code": {
             "position": {
@@ -2260,12 +2360,114 @@
         },
         "post_delay": 1000,
         "next": [
+            "基建_交付作废",
             "子任务_获得物品"
         ],
         "$__mpe_code": {
             "position": {
                 "x": 13786,
                 "y": 1057
+            }
+        }
+    },
+    "基建_订单下滑": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "infra_order_scrollable"
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "infra_order_scroll",
+                "custom_action_param": {
+                    "reason": "基建_订单下滑"
+                }
+            }
+        },
+        "next_doc": "订单库还有下滑空间：下滑一屏后由 JumpBack 回到路由重新扫描；滑块到底或消失则不命中，路由继续拜访好友/切换下一位。判据是滚动条滑块位置，不是固定次数或延时。",
+        "$__mpe_code": {
+            "position": {
+                "x": 13600,
+                "y": 900
+            }
+        }
+    },
+    "基建_交付核验": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "infra_deliver_pending"
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "infra_deliver_verify",
+                "custom_action_param": {
+                    "max_wait": 3.0,
+                    "fail_closed": true,
+                    "reason": "基建_交付核验"
+                }
+            }
+        },
+        "next": [
+            "基建_自己交付"
+        ],
+        "next_doc": "交付收尾确认：只有确有「已点交付、待核验」才命中；命中后标题计数必须变化，否则判失败。核验后回到 基建_自己交付 继续交付/拜访好友，不再命中即终止。",
+        "$__mpe_code": {
+            "position": {
+                "x": 13960,
+                "y": 1057
+            }
+        }
+    },
+    "基建_交付核验_好友": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "infra_deliver_pending"
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "infra_deliver_verify",
+                "custom_action_param": {
+                    "max_wait": 3.0,
+                    "fail_closed": true,
+                    "reason": "基建_交付核验_好友"
+                }
+            }
+        },
+        "next": [
+            "基建_他人交付"
+        ],
+        "next_doc": "好友页的交付核验：与 基建_交付核验 同一套识别/动作，核验后回到 基建_他人交付 继续交付或切换下一位好友。",
+        "$__mpe_code": {
+            "position": {
+                "x": 13600,
+                "y": 1057
+            }
+        }
+    },
+    "基建_交付作废": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "infra_deliver_abort",
+                "custom_action_param": {
+                    "reason": "基建_交付作废"
+                }
+            }
+        },
+        "next_doc": "缺素材走合成/取消分支：本次未消费订单，清掉待核验状态，避免被 基建_交付核验 误判。",
+        "$__mpe_code": {
+            "position": {
+                "x": 13960,
+                "y": 1200
             }
         }
     },
@@ -2408,7 +2610,6 @@
         },
         "post_delay": 2000,
         "next": [
-            "基建_交易",
             "基建_退出",
             "基建_返回按钮"
         ],
@@ -2436,7 +2637,7 @@
         },
         "post_delay": 2000,
         "next": [
-            "进入首页"
+            "基建_回主界面"
         ],
         "$__mpe_code": {
             "position": {
@@ -2444,6 +2645,38 @@
                 "y": 408
             }
         }
+    },
+    "基建_回主界面": {
+        "next": [
+            "基建_确认主界面读资源",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 60000,
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：基建退出后回主界面拍 after；非换班任务（如完整基建）没有配对的 before，after 动作失败也不阻断收尾"
+    },
+    "基建_确认主界面读资源": {
+        "recognition": "OCR",
+        "expected": ["补给站"],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": ["基建_资源后"],
+        "on_error": ["基建_资源后"],
+        "next_doc": "2026-11-15 资源统计接入：确认回主界面后读资源；确认失败也尝试读一次，读不到记 null，不阻断收尾"
+    },
+    "基建_资源后": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "InfraShift", "phase": "after" },
+        "next": ["通用_回主界面并结束"],
+        "on_error": ["通用_回主界面并结束"],
+        "next_doc": "2026-11-15 资源统计接入：任务结束拍 after，随后交给通用收尾"
     },
     "基建_驻员状况": {
         "recognition": {
@@ -2482,7 +2715,8 @@
         "custom_action": "task_memory_gate",
         "custom_action_param": {
             "task": "基建换班检测",
-            "cooldown_minutes": 480
+            "cooldown_minutes": 480,
+            "schedule_job": "infra_shift"
         },
         "next": [
             "基建_换班"
@@ -2490,7 +2724,7 @@
         "on_error": [
             "基建_换班_未到点"
         ],
-        "doc": "周期门禁：距上次【检测】满 480 分钟才放行（默认 8 小时，可在 config/task_memory/<实例>.policy.json 覆盖 cooldown_minutes）。放行后先只读巡检，全绿/有红都在链尾记一次检测时间。",
+        "doc": "周期门禁：距上次【检测】满 480 分钟才放行（默认 8 小时，可在 config/task_memory/<实例>.policy.json 覆盖 cooldown_minutes）。任务级定时到期时（config/job-schedules.json 的 nextRunAt 已到）豁免冷却，手动提前触发仍走 480。放行后先只读巡检，全绿/有红都在链尾记一次检测时间。",
         "$__mpe_code": {
             "position": {
                 "x": 7848,
@@ -2502,13 +2736,41 @@
         "recognition": "DirectHit",
         "action": "DoNothing",
         "next": [
-            "基建_返回按钮"
+            "基建_换班_收尾"
         ],
-        "doc": "门禁拦截早退：未到 8 小时，本次为【未到点跳过】，不巡检、不换班、不写检测记录，只关面板后继续后续链路。",
+        "doc": "门禁拦截早退：未到 8 小时，本次为【未到点跳过】，不巡检、不换班、不写检测记录，只走换班专用收尾（关面板→回主界面→结束），不进订单交付链。",
         "$__mpe_code": {
             "position": {
                 "x": 7848,
                 "y": 360
+            }
+        }
+    },
+    "基建_换班_收尾": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "roi": [
+                    14,
+                    10,
+                    126,
+                    72
+                ],
+                "template": "StartUp/BackButton.png"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": [
+            "基建_回主界面"
+        ],
+        "doc": "换班专用出口（2026-11-19）：只点左上返回关掉驻员状况面板，再走 基建_回主界面 → 基建_资源后 → 通用_回主界面并结束。刻意不复用 基建_返回按钮：那个节点是完整基建的共用枢纽，next 含 基建_交易，会把换班段带进订单库交付链。",
+        "$__mpe_code": {
+            "position": {
+                "x": 7848,
+                "y": 490
             }
         }
     },
@@ -2521,9 +2783,9 @@
             "cooldown_minutes": 480
         },
         "next": [
-            "基建_返回按钮"
+            "基建_换班_收尾"
         ],
-        "doc": "巡检完成（含全绿与真实换班两种情况）后写一次检测时间，作为下一次 8 小时周期的起点。换班失败时该节点不会执行，因此失败不会占用周期。",
+        "doc": "巡检完成（含全绿与真实换班两种情况）后写一次检测时间，作为下一次 8 小时周期的起点。换班失败时该节点不会执行，因此失败不会占用周期。之后走换班专用收尾（关面板→回主界面→结束），不进订单交付链。",
         "$__mpe_code": {
             "position": {
                 "x": 8118,

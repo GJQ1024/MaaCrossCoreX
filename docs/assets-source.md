@@ -20,6 +20,7 @@
 | `image/Infrastructures/mail.png` | ~~MCC_Framework~~ 已按 3.3.1 重截（2026-11-01，`06_home` 主界面信封图标 38×30） | `邮件` |
 | `image/一键领取.png` | ~~MCC_Framework~~ 已按 3.3.1 重截（2026-11-01，`08_dailytask` 每日任务页右上按钮 124×37） | `每日任务_一键领取` |
 | `image/StartUp/ClosePromo.png` | 自截 3.3.1（2026-11-01，`06_home` 星贸凭证弹窗右上 X 36×36） | `子任务_关闭促销弹窗` |
+| `image/Infrastructures/Infr_Recourse2.png` / `Infr_Recourse3.png` | 自截 2026-11-18 21:35 MuMu 1280×720 帧（基地总览、三处资源点满仓 MAX 态；紫晶 60×38 @(513,444)、红晶 60×38 @(578,444)）。原 `Infr_Recourse.png` 只认粉晶，紫/红同帧仅 -0.0028 / -0.1392 | `基建_收取资源`、`基建_收取资源_不换班` |
 
 ## 3.3.1 实机比对备注（2026-11-01，详见 shots/01_ondevice/match_report.json）
 

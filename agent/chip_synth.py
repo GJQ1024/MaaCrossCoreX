@@ -16,7 +16,7 @@
   报告里用 cost_source="ocr"|"fallback" 标明成本来源。
 - 库存不足 3 张、货币不足、槽位点不动、列表扫完——一律干净收尾，不抛错。
 
-默认干跑：选中 3 张后停在「合成」按钮之前，不消耗材料与货币。
+默认真跑：面板「执行模式」选「干跑」或设 LAA_CHIP_SYNTH_REAL=0 时，才停在「合成」按钮之前、不消耗材料与货币。
 """
 
 from __future__ import annotations
@@ -51,7 +51,11 @@ from chip_domain import MAIN_SKILLS, SUB_SKILLS, normalize_ocr
 from chip_filter_flow import instance_config_path, parse_detail_level_cluster
 from stop_guard import ActionStopped, ensure_running
 
+import diag
+
 log = logging.getLogger("laa.chip_synth")
+# 日志出口统一由 diag.setup() 配置：INFO 及以上进 logs/agent-*.log，
+# 面板只收 diag.stage 写的阶段摘要（每任务 ≤10 行）。
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -62,8 +66,9 @@ SYNTH_SKILLS = SYNTH_MAIN_SKILLS + SUB_SKILLS
 
 TASK_NAME = "芯片合成"
 OPT_SKILLS = "芯片合成_主技能"
-OPT_QUALITIES = "芯片合成_芯片品质"
 OPT_THRESHOLD = "芯片合成_阈值"
+# 合成台只接受 R5 芯片：品质固定，不再从面板/环境变量读取。
+SYNTH_QUALITIES = ("R5",)
 
 # 1280x720 实测（详见 specs/chip-synthesis-20261110/测绘记录.md）
 SORT_LABEL_ROI = [190, 88, 260, 48]
@@ -258,15 +263,13 @@ def _walk_options(items):
 def _config_options():
     """实例配置兜底：复选框存 selected_cases，输入框存 data。"""
     item = _task_item()
-    found = {"skills": [], "qualities": [], "threshold": None}
+    found = {"skills": [], "threshold": None}
     if item is None:
         return found
     for option in _walk_options(item.get("option")):
         name = option.get("name")
         if name == OPT_SKILLS:
             found["skills"] = [str(v) for v in (option.get("selected_cases") or [])]
-        elif name == OPT_QUALITIES:
-            found["qualities"] = [str(v) for v in (option.get("selected_cases") or [])]
         elif name == OPT_THRESHOLD:
             for value in (option.get("data") or {}).values():
                 if isinstance(value, str) and re.fullmatch(r"\d+/\d+/\d+/\d+", value.strip()):
@@ -314,12 +317,6 @@ def _default_threshold():
     return ""
 
 
-def _default_qualities():
-    """面板复选框默认勾选，来自 interface.json 的「芯片合成_芯片品质」。"""
-    option = _interface_options().get(OPT_QUALITIES) or {}
-    return [str(v) for v in (option.get("default_case") or []) if str(v) in QUALITY_POINTS]
-
-
 def _env_list(name):
     raw = os.environ.get(name, "").strip()
     if not raw:
@@ -338,21 +335,15 @@ def _env_flag(name):
 def _resolve_options(param):
     config = _config_options()
     skills = [key[3:] for key, value in param.items() if key.startswith("ms_") and value]
-    qualities = [key[2:] for key, value in param.items() if key.startswith("q_") and value]
     threshold = str(param.get("threshold") or "").strip()
     if not skills:
         skills = config["skills"]
-    if not qualities:
-        qualities = config["qualities"]
     if not threshold:
         threshold = config["threshold"] or ""
 
     env_skills = _env_list("LAA_CHIP_SYNTH_SKILLS")
     if env_skills:
         skills = env_skills
-    env_qualities = _env_list("LAA_CHIP_SYNTH_QUALITIES")
-    if env_qualities:
-        qualities = env_qualities
     if os.environ.get("LAA_CHIP_SYNTH_THRESHOLD"):
         threshold = os.environ["LAA_CHIP_SYNTH_THRESHOLD"].strip()
 
@@ -362,11 +353,10 @@ def _resolve_options(param):
         levels = _parse_threshold(threshold) or []
         log.warning("阈值缺失或非法，回落到 interface.json 默认：%r", threshold)
 
-    qualities = [q for q in qualities if q in QUALITY_POINTS]
     skills = [s for s in skills if s in SYNTH_MAIN_SKILLS]
     return {
         "skills": skills,
-        "qualities": qualities or _default_qualities(),
+        "qualities": list(SYNTH_QUALITIES),
         "threshold": levels,
         "threshold_raw": "/".join(str(v) for v in levels) if levels else "",
     }
@@ -455,6 +445,9 @@ def _crop_grid(image):
 # (按住ms, 图标内 x 偏移, y 偏移)：第二次重试换时长、并在图标范围内换落点。
 DETAIL_ATTEMPTS = ((900, 0, 0), (1300, -10, 8))
 ICON_HALF = (24, 28)  # 图标在 x/y 方向的半幅（实测），重试落点不得越界
+# 松手后的判定轮询：弹窗有入场动画，单帧判定会把「已打开」误判成「未出现」。
+DETAIL_POLL_DEADLINE = 2.4   # 秒，单次长按后最多等这么久
+DETAIL_POLL_INTERVAL = 0.4   # 秒，轮询间隔
 
 
 def _icon_point(card):
@@ -508,26 +501,42 @@ def _detail_visible(context, image=None, trace=None):
 def _open_detail(context, point, evidence=None):
     """长按打开详情：point 必须是芯片图标中心（见 _icon_point）。
 
-    以弹窗内容出现为判据，重试时换时长并在图标范围内换落点；
-    两次都不出现就返回 False，由调用方把这张记为 unknown —— 不静默跳过。
-    evidence 只用于取证：判定「已开」那一刻的整屏帧与原始 OCR 写回该 dict。
+    松手后按 DETAIL_POLL_DEADLINE 轮询判定弹窗内容，而不是只截一帧：弹窗有入场
+    动画，单帧判定会把「已打开」误判成「未出现」，第 2 次长按又会落在已打开的
+    弹窗上。两次尝试都在 deadline 内轮询不到才返回 False，由调用方记 unknown（
+    fail-closed），失败帧与最后一次 OCR 写回 evidence，便于事后定位。
     """
+    last_image = None
+    last_trace = None
     for attempt, (duration, dx, dy) in enumerate(DETAIL_ATTEMPTS, start=1):
         if abs(dx) > ICON_HALF[0] or abs(dy) > ICON_HALF[1]:
             log.error("[芯片合成] 重试落点 (%+d,%+d) 超出芯片图标范围，拒绝落到图标外", dx, dy)
         _press(context, point, duration, dx, dy)
-        image = _shot(context)
-        trace = {} if evidence is not None else None
-        if _detail_visible(context, image, trace):
-            if evidence is not None:
-                # 标题命中时上面的判定不会读四行区，这里补一次只为取证
-                if "rows" not in trace:
-                    trace["rows"] = _ocr_snapshot(_ocr(context, image, DETAIL_OCR_ROI))
-                evidence["open_image"] = image
-                evidence["open_ocr"] = trace
-            return True
-        log.warning("[芯片合成] 长按 %dms 偏移(%+d,%+d) 后详情弹窗未出现（第 %d/%d 次）",
-                    duration, dx, dy, attempt, len(DETAIL_ATTEMPTS))
+        started = time.monotonic()
+        polls = 0
+        while True:
+            polls += 1
+            image = _shot(context)
+            trace = {} if evidence is not None else None
+            if _detail_visible(context, image, trace):
+                if evidence is not None:
+                    # 标题命中时上面的判定不会读四行区，这里补一次只为取证
+                    if "rows" not in trace:
+                        trace["rows"] = _ocr_snapshot(_ocr(context, image, DETAIL_OCR_ROI))
+                    evidence["open_image"] = image
+                    evidence["open_ocr"] = trace
+                    evidence["open_polls"] = polls
+                log.info("[芯片合成] 第 %d 次长按后第 %d 次轮询判定详情已出现", attempt, polls)
+                return True
+            last_image, last_trace = image, trace
+            if time.monotonic() - started >= DETAIL_POLL_DEADLINE:
+                break
+            time.sleep(DETAIL_POLL_INTERVAL)
+        log.warning("[芯片合成] 长按 %dms 偏移(%+d,%+d) 后 %.1fs 内详情弹窗未出现（第 %d/%d 次）",
+                    duration, dx, dy, DETAIL_POLL_DEADLINE, attempt, len(DETAIL_ATTEMPTS))
+    if evidence is not None:
+        evidence["fail_image"] = last_image
+        evidence["fail_ocr"] = last_trace
     return False
 
 
@@ -676,7 +685,7 @@ class ChipSynthAction(CustomAction):
     def run(self, context, argv) -> bool:
         param = _param(getattr(argv, "custom_action_param", ""))
         operation = str(param.get("operation") or "")
-        if not operation and ("dry_run" in param or any(k.startswith(("ms_", "q_")) for k in param)):
+        if not operation and ("dry_run" in param or any(k.startswith("ms_") for k in param)):
             operation = "init"
         try:
             ensure_running(context)
@@ -707,19 +716,20 @@ class ChipSynthAction(CustomAction):
 
     def _init(self, context, argv, param):
         options = _resolve_options(param)
-        # 壳（MFAAvalonia）会用 interface.json 的选项生成 custom_action_param，并把整份
-        # param 覆盖到本节点，流水线里的 dry_run / max_rounds 到不了这里（P-100 实测只收到
-        # {"q_R5":true}）。这是壳的已知行为约束，不能靠 pipeline 参数控制真跑/干跑，因此
-        # 以环境变量为准；pipeline 参数仅作不经过壳直接跑流水线时的兜底。
+        # 真跑/干跑由面板选项「芯片合成_执行模式」决定，默认真跑；
+        # 环境变量 LAA_CHIP_SYNTH_REAL 只作调试覆盖（不经壳直接跑流水线时用）。
+        # 历史包袱：P-100 时壳会把 custom_action_param 整体覆盖，pipeline 的 dry_run 到不了
+        # agent，才临时改成「以环境变量为准」；现在壳侧是合并语义，绕路的理由已不存在。
         env_real = _env_flag("LAA_CHIP_SYNTH_REAL")
-        if env_real is None:
-            dry_run = param.get("dry_run", True)
+        if env_real is not None:
+            dry_run = not env_real
+            mode_source = "env:LAA_CHIP_SYNTH_REAL"
+        else:
+            dry_run = param.get("dry_run", False)
             if isinstance(dry_run, str):
                 dry_run = dry_run.strip().lower() not in ("0", "false", "no", "")
             dry_run = bool(dry_run)
-        else:
-            # 名字是 REAL：值为真表示真跑，故这里取反得到 dry_run
-            dry_run = not env_real
+            mode_source = "panel:芯片合成_执行模式"
         session = _Synth(options, dry_run)
         _SESSION["synth"] = session
         env_rounds = os.environ.get("LAA_CHIP_SYNTH_MAX_ROUNDS")
@@ -733,6 +743,7 @@ class ChipSynthAction(CustomAction):
         # 截图失败中断时也要能从 report.json 看出这轮配的是什么。
         session.report["mode"] = "DRY RUN" if session.dry_run else "REAL"
         session.report["dry_run"] = session.dry_run
+        session.report["mode_source"] = mode_source
         session.report["skills"] = list(options["skills"])
         session.report["qualities"] = list(options["qualities"])
         session.report["threshold"] = options["threshold_raw"]
@@ -740,14 +751,17 @@ class ChipSynthAction(CustomAction):
         ready = bool(options["skills"])
         _SESSION["status"] = "ready" if ready else "skip"
         log.info(
-            "[芯片合成] 启动自检：模式=%s dry_run=%s max_rounds=%s 阈值=%s 主技能=%s 品质=%s "
-            "环境变量(REAL=%r MAX_ROUNDS=%r) 证据=%s",
-            "DRY RUN" if session.dry_run else "REAL", session.dry_run, session.max_rounds,
-            options["threshold_raw"], options["skills"], options["qualities"],
+            "[芯片合成] 启动自检：模式=%s（来源 %s）dry_run=%s max_rounds=%s 阈值=%s 主技能=%s "
+            "品质=%s 环境变量(REAL=%r MAX_ROUNDS=%r) 证据=%s",
+            "DRY RUN" if session.dry_run else "REAL", mode_source, session.dry_run,
+            session.max_rounds, options["threshold_raw"], options["skills"], options["qualities"],
             os.environ.get("LAA_CHIP_SYNTH_REAL"), env_rounds, session.dir,
         )
         session.report["status"] = "ready" if ready else "skip"
         session.flush()
+        diag.stage("芯片合成", "模式=%s（%s）主技能=%s 品质=%s 阈值=%s"
+                   % ("REAL" if not session.dry_run else "DRY RUN", mode_source,
+                      options["skills"], options["qualities"], options["threshold_raw"]))
         if not ready:
             # 未勾选主技能：显式分流到跳过，不靠状态门识别失败 20s 超时再走父节点 on_error（P-097）
             context.override_next("芯片合成_初始化", ["芯片合成_跳过"])
@@ -818,10 +832,28 @@ class ChipSynthAction(CustomAction):
                 entry["status"] = entry["status"] if entry["status"] != "pending" else "aborted"
                 session.report["status"] = "slot_stuck"
                 log.error("[芯片合成] 槽位清不空，停止后续主技能（防跨技能串料）")
+                diag.judge("材料槽可清空", "3 个槽都能点掉", "槽位清不空（%s）" % skill, ok=False)
                 return True
         session.report["status"] = "dryrun_finished" if session.dry_run else "finished"
         session.flush()
         self._summary(session)
+        runs = session.report["skill_runs"]
+        if session.dry_run:
+            planned_rounds = sum(int(item.get("planned_rounds") or 0) for item in runs)
+            planned_chips = sum(int(item.get("planned_chips") or 0) for item in runs)
+            planned_currency = sum(int(item.get("planned_currency") or 0) for item in runs)
+            log.warning(
+                "[芯片合成] DRY RUN：本次未执行合成（计划 %d 轮 / %d 张 / %d 货币）；"
+                "队列判成功仅代表自检通过，不代表已合成",
+                planned_rounds, planned_chips, planned_currency,
+            )
+        elif not sum(int(item.get("consumed_chips") or 0) for item in runs):
+            log.warning("[芯片合成] 本次未执行合成（各主技能都没凑满 3 张可合芯片），"
+                        "判成功不等同于完成，详见上方各主技能的扫描行")
+        diag.done("芯片合成", "模式=%s 消耗芯片=%d 轮数=%d"
+                  % ("REAL" if not session.dry_run else "DRY RUN",
+                     sum(int(item.get("consumed_chips") or 0) for item in runs),
+                     sum(int(item.get("rounds") or 0) for item in runs)))
         return True
 
     def _process_skill(self, context, session, skill, entry):
@@ -847,8 +879,10 @@ class ChipSynthAction(CustomAction):
         count_label = (f"至少 {len(candidates)} 张" if entry.get("scan_truncated")
                        else f"{len(candidates)} 张")
         entry["eligible_label"] = count_label  # 截断时只能算下限，报告里也照此标注
-        log.info("[芯片合成] %s：可合%s（锁定/不可选跳过 %d，明细未知 %d）",
-                 skill, count_label, entry["locked_skipped"], entry.get("unknown", 0))
+        log.info("[芯片合成] %s：扫描 %d 张（unknown %d / eligible %d / 锁定跳过 %d / 截断 %s）",
+                 skill, entry.get("scanned", 0), entry.get("unknown", 0),
+                 len(candidates), entry.get("locked_skipped", 0),
+                 bool(entry.get("scan_truncated")))
         if entry.get("unknown", 0) > 0:
             # 读不出明细的卡该不该合无从判断，样本残缺就不许推进
             entry["status"] = "incomplete"
@@ -869,6 +903,16 @@ class ChipSynthAction(CustomAction):
         if len(candidates) < 3:
             entry["status"] = "stock_short"
             entry["stop_reason"] = "stock_short"
+            entry["select_reason"] = "insufficient_eligible"
+            log.warning(
+                "[芯片合成] %s：本次无可合成芯片（eligible=%d<3：扫描 %d 张 / unknown %d / "
+                "锁定跳过 %d），未执行合成",
+                skill, len(candidates), entry.get("scanned", 0),
+                entry.get("unknown", 0), entry.get("locked_skipped", 0),
+            )
+            diag.judge("可合成库存", "eligible≥3", "eligible=%d（扫描 %d / unknown %d / 锁定 %d）"
+                       % (len(candidates), entry.get("scanned", 0), entry.get("unknown", 0),
+                          entry.get("locked_skipped", 0)), ok=False)
             return True
 
         planned_rounds = len(candidates) // 3
@@ -911,6 +955,9 @@ class ChipSynthAction(CustomAction):
             if len(picked) < 3:
                 entry["status"] = "stock_short"
                 entry["stop_reason"] = "stock_short"
+                entry["select_reason"] = "select_three_short"
+                log.warning("[芯片合成] %s：本轮只选中 %d 张（候选 %d 张），未执行合成",
+                            skill, len(picked), len(candidates))
                 break
             entry.setdefault("picked", []).extend({
                 "row": item["row"] + 1,
@@ -1092,17 +1139,26 @@ class ChipSynthAction(CustomAction):
         filled_before = _filled_count(image)
         for card in cards:
             evidence = {}
-            if not _open_detail(context, _icon_point(card), evidence):
+            opened = _open_detail(context, _icon_point(card), evidence)
+            if not opened and _detail_visible(context, _shot(context)):
+                # 判定窗口刚过才出弹窗：仍按已打开处理，不误记 unknown、不盲点关闭
+                log.warning("[芯片合成] 行%d列%d 判定窗口结束后详情才出现，按已打开继续",
+                            card["row"] + 1, card["col"] + 1)
+                opened = True
+            if not opened:
                 _close_detail(context)
+                row, col = card["row"] + 1, card["col"] + 1
                 entry["unknown"] = entry.get("unknown", 0) + 1
                 entry.setdefault("unknown_cards", []).append({
-                    "row": card["row"] + 1,
-                    "col": card["col"] + 1,
-                    "reason": "详情打不开（长按两次均未出现弹窗）",
+                    "row": row,
+                    "col": col,
+                    "reason": "详情打不开（两次长按+轮询均未出现弹窗）",
+                    "fail_frame": _save_frame(
+                        session, evidence.get("fail_image"), f"unknown_open_r{row}c{col}.png"),
+                    "fail_ocr": evidence.get("fail_ocr"),
                 })
-                entry["notes"].append(f"明细未知 行{card['row'] + 1}列{card['col'] + 1}：详情打不开")
-                log.warning("[芯片合成] %s 行%d列%d 详情打不开，记 unknown", skill,
-                            card["row"] + 1, card["col"] + 1)
+                entry["notes"].append(f"明细未知 行{row}列{col}：详情打不开")
+                log.warning("[芯片合成] %s 行%d列%d 详情打不开，记 unknown", skill, row, col)
                 continue
             detail = self._read_detail(context, evidence)
             if not _close_detail(context):

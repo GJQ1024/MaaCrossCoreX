@@ -25,12 +25,12 @@
 退出码：
   0 成功（含“当前已是目标账号，跳过”）
   1 流程失败（超时 / 界面无法判定 / 登录报错）
-  2 环境或参数错误（设备不是 V2284A、清单序号越界等）
+  2 环境或参数错误（设备型号不符、清单序号越界等）
   3 需要人工介入（实名认证 / 验证码 / 风控）
 
 用法：
   python scripts/account_switch.py --index 2
-  python scripts/account_switch.py --index 1 --expect-uid 104445339
+  python scripts/account_switch.py --index 1 --expect-uid <uid>
 """
 
 from __future__ import annotations
@@ -53,7 +53,6 @@ from PIL import Image
 #   PROJECT_ROOT = MCC_Framework 根（本脚本在 <根>/scripts/ 下）
 #   MAA_ROOT     = 上层工作区根（账号清单与状态文件放在 <MAA>/sandbox/）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MAA_ROOT = PROJECT_ROOT.parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 
@@ -61,6 +60,8 @@ import pretask_landscape as device  # noqa: E402  仓库内唯一的 adb 路径 
 import device_judge  # noqa: E402  待机画面判据：游戏屏保 vs Android 系统锁屏
 import tutorial_state  # noqa: E402  当前账号缓存（tutorial_once 账号维度）
 
+# 与 tutorial_state 同一个根（环境变量/配置/祖先/缺省），浅目录下不再越界索引
+MAA_ROOT = tutorial_state.maa_root()
 ADB_PATH = device.adb_path()
 SERIAL = device.detect_serial() or ""
 RESOURCE_DIR = PROJECT_ROOT / "assets" / "resource"
@@ -102,6 +103,8 @@ BILI_RE = re.compile(r"bili_\d+")
 SAFE_TEXT_RE = re.compile(r"[A-Za-z0-9@._+-]+")
 
 ACCOUNTS_DEFAULT = MAA_ROOT / "sandbox" / "accounts.txt"
+# 目标设备型号（可按机型覆盖；用于拒绝在非目标设备上操作）
+EXPECTED_MODEL = os.environ.get("MCC_EXPECTED_MODEL", "V2284A")
 STATE_FILE_DEFAULT = MAA_ROOT / "sandbox" / "account_switch_state.json"
 
 
@@ -466,6 +469,7 @@ class SwitchRun:
         record["updated_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
         self.state_data[str(self.args.index)] = record
         try:
+            STATE_FILE_DEFAULT.parent.mkdir(parents=True, exist_ok=True)
             STATE_FILE_DEFAULT.write_text(
                 json.dumps(self.state_data, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as exc:  # noqa: BLE001
@@ -826,10 +830,10 @@ def main() -> int:
         print("RESULT " + json.dumps(
             {"ok": False, "reason": "env", "detail": f"设备不可达：{exc}"}, ensure_ascii=False))
         return 2
-    if "V2284A" not in model:
+    if EXPECTED_MODEL not in model:
         print("RESULT " + json.dumps(
             {"ok": False, "reason": "wrong_instance",
-             "detail": f"{args.serial} 型号 {model}，不是 JCZX(V2284A)，已拒绝操作"},
+             "detail": f"{args.serial} 型号 {model}，不是 {EXPECTED_MODEL}，已拒绝操作"},
             ensure_ascii=False))
         return 2
 

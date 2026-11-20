@@ -24,10 +24,10 @@ def _detail(main, subs):
     }
 
 
-def test_default_threshold_and_quality_come_from_interface():
+def test_default_threshold_comes_from_interface():
     assert chip_synth._default_threshold() == "2/1/1/1"
-    assert chip_synth._default_qualities() == ["R5"]
     assert chip_synth._parse_threshold(chip_synth._default_threshold()) == [2, 1, 1, 1]
+    assert chip_synth._resolve_options({})["qualities"] == ["R5"]
     assert chip_synth._parse_threshold("2/1/1") is None
     assert chip_synth._parse_threshold("2/1/1/x") is None
     assert chip_synth._parse_threshold("9/1/1/1") == [3, 1, 1, 1]
@@ -111,13 +111,13 @@ def test_init_without_skills_overrides_to_skip():
     context = SimpleNamespace(override_next=lambda node, nxt: calls.append((node, list(nxt))))
     original_config = chip_synth._config_options
     original_synth = chip_synth._Synth
-    chip_synth._config_options = lambda: {"skills": [], "qualities": ["R5"], "threshold": "2/1/1/1"}
+    chip_synth._config_options = lambda: {"skills": [], "threshold": "2/1/1/1"}
     chip_synth._Synth = _FakeSynth
     try:
-        ok_skip = action._init(context, None, {"q_R5": True, "dry_run": True})
+        ok_skip = action._init(context, None, {"dry_run": True})
         skip_status = chip_synth._SESSION["status"]
-        chip_synth._config_options = lambda: {"skills": ["连击"], "qualities": ["R5"], "threshold": "2/1/1/1"}
-        ok_ready = action._init(context, None, {"q_R5": True, "dry_run": True})
+        chip_synth._config_options = lambda: {"skills": ["连击"], "threshold": "2/1/1/1"}
+        ok_ready = action._init(context, None, {"dry_run": True})
         ready_status = chip_synth._SESSION["status"]
     finally:
         chip_synth._config_options = original_config
@@ -597,7 +597,7 @@ def test_main_level_width_unreadable_is_unknown():
         chip_synth._digit_width = original
 
 
-def test_init_env_overrides_shell_covered_param():
+def test_init_mode_panel_first_env_override():
     action = chip_synth.ChipSynthAction()
     context = SimpleNamespace(override_next=lambda *args: None,
                               tasker=SimpleNamespace(running=True))
@@ -617,28 +617,32 @@ def test_init_env_overrides_shell_covered_param():
         def flush(self):
             pass
 
-    chip_synth._config_options = lambda: {"skills": ["连击"], "qualities": ["R5"],
-                                          "threshold": "2/1/1/1"}
+    chip_synth._config_options = lambda: {"skills": ["连击"], "threshold": "2/1/1/1"}
     chip_synth._Synth = _CaptureSession
     env_names = ("LAA_CHIP_SYNTH_REAL", "LAA_CHIP_SYNTH_MAX_ROUNDS")
     saved = {name: os.environ.get(name) for name in env_names}
     try:
         for name in env_names:
             os.environ.pop(name, None)
-        # 不经壳：pipeline 参数兜底
-        action._init(context, None, {"q_R5": True, "dry_run": False, "max_rounds": 5})
+        # 面板默认「真跑」：参数里没有 dry_run 也按真跑
+        action._init(context, None, {"max_rounds": 5})
         assert created[-1].dry_run is False and created[-1].max_rounds == 5
-        # 壳覆盖后只剩 q_R5：默认干跑，不能伪装成真合
-        action._init(context, None, {"q_R5": True})
-        assert created[-1].dry_run is True and created[-1].max_rounds is None
-        # 环境变量优先于被覆盖的 param
+        assert created[-1].report["mode"] == "REAL"
+        assert created[-1].report["mode_source"] == "panel:芯片合成_执行模式"
+        # 面板选「干跑」：dry_run=true 生效
+        action._init(context, None, {"dry_run": True})
+        assert created[-1].dry_run is True
+        assert created[-1].report["mode"] == "DRY RUN"
+        # 环境变量只作调试覆盖，优先级高于面板
         os.environ["LAA_CHIP_SYNTH_REAL"] = "1"
         os.environ["LAA_CHIP_SYNTH_MAX_ROUNDS"] = "1"
-        action._init(context, None, {"q_R5": True, "dry_run": True, "max_rounds": 5})
+        action._init(context, None, {"dry_run": True, "max_rounds": 5})
         assert created[-1].dry_run is False and created[-1].max_rounds == 1
+        assert created[-1].report["mode_source"] == "env:LAA_CHIP_SYNTH_REAL"
         os.environ["LAA_CHIP_SYNTH_REAL"] = "0"
-        action._init(context, None, {"q_R5": True})
+        action._init(context, None, {})
         assert created[-1].dry_run is True
+        assert created[-1].report["mode_source"] == "env:LAA_CHIP_SYNTH_REAL"
     finally:
         for name, value in saved.items():
             if value is None:

@@ -31,7 +31,7 @@
 
 ```powershell
 cd third_party/MCC_Framework
-git -c http.proxy=http://127.0.0.1:7897 fetch origin main
+git -c http.proxy=http://127.0.0.1:<proxy-port> fetch origin main
 git diff fee54921e3950487ec9fd763611a9454d4d31b19..origin/main --stat -- assets/resource
 ```
 

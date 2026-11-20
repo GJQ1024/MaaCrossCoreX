@@ -1,4 +1,5 @@
 import json
+import re
 import time
 import itertools
 
@@ -1469,6 +1470,159 @@ def wait_character_gone(
         )
 
 
+# 编队页左上角「上阵：N/M」的读数区域
+JDC_TEAM_COUNT_ROI = [
+    20,
+    155,
+    240,
+    45
+]
+
+_JDC_TEAM_COUNT_RE = re.compile(
+    r"上阵\s*[：:]?\s*(\d+)\s*(?:[/／]\s*(\d+))?"
+)
+
+
+def read_team_count(
+    context
+):
+    """读「上阵：N/M」，返回 (N, M)；读不到返回 (None, None)。
+
+    2026-11-20 实机：拖拽落位原先只靠「角色名从候选列表消失」确认，
+    列表重排/名字 OCR 抖动时会误报离场（.tmp/jdc_verify/full-20261120-005155
+    里 5 次全报离场、实际只上阵 3 人）。上阵计数是直接状态量，改用它。
+    """
+
+    detail = (
+        context.run_recognition(
+            "角斗场_角色OCR",
+            screencap(
+                context
+            ),
+            pipeline_override={
+                "角斗场_角色OCR": {
+                    "recognition": "OCR",
+                    "expected": ".+",
+                    "roi": JDC_TEAM_COUNT_ROI
+                }
+            }
+        )
+    )
+
+    texts = []
+
+    for item in (
+        getattr(
+            detail,
+            "all",
+            None
+        )
+        or
+        []
+    ):
+
+        text = getattr(
+            item,
+            "text",
+            None
+        )
+
+        if text:
+
+            texts.append(
+                text
+            )
+
+    best_text = jdc.extract_ocr_text(
+        detail
+    )
+
+    if (
+        best_text
+        and
+        best_text not in texts
+    ):
+
+        texts.append(
+            best_text
+        )
+
+    for text in texts:
+
+        matched = _JDC_TEAM_COUNT_RE.search(
+            text
+        )
+
+        if not matched:
+
+            continue
+
+        total = matched.group(2)
+
+        return (
+            int(
+                matched.group(1)
+            ),
+
+            int(total) if total else None
+        )
+
+    if texts:
+
+        print(
+            "[角斗场] 上阵计数解析失败："
+            + str(
+                texts
+            )
+        )
+
+    return None, None
+
+
+def wait_team_count_grow(
+    context,
+    before,
+    timeout=JDC_DRAG_CONFIRM_TIMEOUT
+):
+    """等「上阵」读数比 before 大，返回 (是否增加, 当前读数, 上限)。"""
+
+    deadline = (
+        time.monotonic()
+        +
+        timeout
+    )
+
+    while True:
+
+        current, cap = (
+            read_team_count(
+                context
+            )
+        )
+
+        if (
+            before is not None
+            and
+            current is not None
+            and
+            current > before
+        ):
+
+            return True, current, cap
+
+        if (
+            time.monotonic()
+            >=
+            deadline
+        ):
+
+            return False, current, cap
+
+        time.sleep(
+            JDC_LIST_POLL_INTERVAL
+        )
+
+
 def clear_team(
     context,
     roi,
@@ -1536,6 +1690,12 @@ def clear_team(
             )
         )
 
+        count_now, _ = (
+            read_team_count(
+                context
+            )
+        )
+
         if (
             filled
             >=
@@ -1544,11 +1704,18 @@ def clear_team(
             signature
             ==
             previous
+            and
+            (
+                count_now is None
+                or
+                count_now == 0
+            )
         ):
 
             print(
                 "[角斗场] 清空完成，"
-                f"候选区 {filled}/{expected} 格有卡"
+                f"候选区 {filled}/{expected} 格有卡，"
+                f"上阵={count_now}"
             )
 
             return True
@@ -1561,7 +1728,8 @@ def clear_team(
 
             print(
                 "[角斗场] 清空未完成，"
-                f"候选区 {filled}/{expected} 格有卡"
+                f"候选区 {filled}/{expected} 格有卡，"
+                f"上阵={count_now}"
             )
 
             return False
@@ -1631,15 +1799,52 @@ class JdcBuildTeam(
             )
 
             # =================================================
+            # 编队前确保队伍已清空
+            #
+            # 管道里的「清空队伍」点击可能被吞：2026-11-20 07:18 实机
+            # 点击后仍停在 5/5，候选只剩 3 张，随后被误判「不足5人」。
+            # 这里按「上阵 N/M」计数补一次清空并复核。
+            # =================================================
+
+            count_now, _ = (
+                read_team_count(
+                    context
+                )
+            )
+
+            if count_now is None or count_now > 0:
+
+                if count_now is not None:
+
+                    print(
+                        "[角斗场] 编队前上阵="
+                        f"{count_now}，先清空队伍"
+                    )
+
+                if not clear_team(
+                    context,
+                    clear_roi,
+                    list_roi
+                ):
+
+                    print(
+                        "[角斗场] 编队前清空失败，放弃本次编队"
+                    )
+
+                    save_frame(
+                        context,
+                        "clear_failed"
+                    )
+
+                    return False
+
+            # =================================================
             # OCR完整角色
             # =================================================
 
             visible = (
-                scan_character_list(
+                scan_character_list_settled(
                     context,
-                    screencap(
-                        context
-                    ),
                     list_roi
                 )
             )
@@ -1913,6 +2118,28 @@ class JdcBuildTeam(
 
                     if chosen is None:
 
+                        # 已经上阵满员时，列表里当然找不到待上阵角色，
+                        # 这不是失败（计数确认可能刚好没读到）。
+                        count_full, cap_full = (
+                            read_team_count(
+                                context
+                            )
+                        )
+
+                        if (
+                            count_full is not None
+                            and
+                            count_full >= (cap_full or 5)
+                        ):
+
+                            print(
+                                "[角斗场] 候选已无待上阵角色，"
+                                f"上阵={count_full}/"
+                                f"{cap_full or 5}，视为完成"
+                            )
+
+                            break
+
                         print(
                             "[角斗场] 当前可见角色中"
                             "找不到任何待上阵角色："
@@ -1945,12 +2172,20 @@ class JdcBuildTeam(
                         ]
                     )
 
+                    # 拖拽前先读一次上阵计数，落位后只看它是否 +1。
+                    count_before, team_cap = (
+                        read_team_count(
+                            context
+                        )
+                    )
+
                     print(
                         "[角斗场] 拖拽："
                         f"{name} "
                         f"({sx},{sy})"
                         " -> "
                         f"({tx},{ty})"
+                        f" 上阵={count_before}/{team_cap or 5}"
                     )
 
                     drag_start = (
@@ -1965,21 +2200,39 @@ class JdcBuildTeam(
                         swipe_duration
                     ).wait()
 
-                    # 唯一放行条件：该角色已从候选列表消失
-                    gone, after_visible = (
-                        wait_character_gone(
-                            context,
-                            list_roi,
-                            name
-                        )
-                    )
+                    # 落位判据：上阵计数 +1。
+                    # 旧的「名字从候选列表消失」会被列表重排/名字 OCR 抖动骗过，
+                    # 只有读不到计数时才退回旧判据。
+                    if count_before is None:
 
-                    if gone:
+                        placed, after_visible = (
+                            wait_character_gone(
+                                context,
+                                list_roi,
+                                name
+                            )
+                        )
+
+                        count_after = None
+
+                    else:
+
+                        placed, count_after, team_cap = (
+                            wait_team_count_grow(
+                                context,
+                                count_before
+                            )
+                        )
+
+                        after_visible = None
+
+                    if placed:
 
                         print(
-                            "[角斗场] 已确认离场："
+                            "[角斗场] 已确认上阵："
                             f"{name} "
-                            f"用时 {time.monotonic() - drag_start:.2f}s"
+                            f"用时 {time.monotonic() - drag_start:.2f}s "
+                            f"上阵={count_after}/{team_cap or 5}"
                         )
 
                     else:
@@ -1995,15 +2248,9 @@ class JdcBuildTeam(
 
                         print(
                             "[角斗场] 拖拽未生效："
-                            f"{name} 仍在候选列表 "
+                            f"{name} "
                             f"(第{drag_attempts[name]}次)，"
-                            "当前候选："
-                            +
-                            str(
-                                sorted(
-                                    after_visible.keys()
-                                )
-                            )
+                            f"上阵={count_after}/{team_cap or 5}"
                         )
 
                         if (
@@ -2037,7 +2284,15 @@ class JdcBuildTeam(
 
                 else:
 
-                    # 最终验证
+                    # 最终验证：以「上阵 N/M」到满为准。
+                    # 列表判据在人数多、卡片重排时会受名字 OCR 影响，
+                    # 只保留作日志与计数读不到时的退路。
+                    count_final, cap_final = (
+                        read_team_count(
+                            context
+                        )
+                    )
+
                     final_visible = (
                         scan_character_list_settled(
                             context,
@@ -2052,25 +2307,45 @@ class JdcBuildTeam(
                         if name in owned_names
                     }
 
-                    success = False
-
-                    # 6选5
-                    if len(remaining) == 1:
-
-                        success = (
-                            visible_owned
-                            ==
-                            remaining
+                    print(
+                        "[角斗场] 编队校验："
+                        f"上阵={count_final}/{cap_final} "
+                        "候选剩余="
+                        +
+                        str(
+                            sorted(
+                                visible_owned
+                            )
                         )
+                    )
+
+                    if count_final is None:
+
+                        # 计数读不到才退回旧的列表判据
+                        if len(remaining) == 1:
+
+                            success = (
+                                visible_owned
+                                ==
+                                remaining
+                            )
+
+                        else:
+
+                            success = (
+                                not (
+                                    final_names
+                                    &
+                                    visible_owned
+                                )
+                            )
 
                     else:
 
                         success = (
-                            not (
-                                final_names
-                                &
-                                visible_owned
-                            )
+                            count_final is not None
+                            and
+                            count_final >= (cap_final or 5)
                         )
 
                     if success:

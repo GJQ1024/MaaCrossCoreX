@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""pretask：把 JCZX 切到横屏 1280x720 并做画面有效性预检，帧级不过则非零退出中止任务。
+"""pretask：把 <实例> 切到横屏 1280x720 并做画面有效性预检，帧级不过则非零退出中止任务。
 
 判据分层（2026-11-02）：方向/渲染面/黑屏（见下）决定识别可靠性，是硬闸门；
 宿主窗口竖条或非 16:9 只影响观感，仅记录警告、不中止（见 host_window_warning）。
@@ -41,9 +41,12 @@ Android 以面板旋转(orientation=1)呈现 1280×720 横屏，游戏不再锁�
 身份闸门（2026-11-09，P-078）：壳当前连接的设备（config/instances/default.json 的
 `AdbDevice.AdbSerial`）必须与按 android_id 认出的目标是同一台；指纹取不到或不是同一台
 → 退出码 3 中止，绝不自动改连其他实例。端口只作连上后的取值，不作设备身份。
-选中后打印实例名与端口（MuMu 能拿到名字就显示 `JCZX (index 1) 127.0.0.1:xxxx`，
+选中后打印实例名与端口（MuMu 能拿到名字就显示 `<实例> (index 1) 127.0.0.1:xxxx`，
 否则退化为 `127.0.0.1:xxxx (型号)`），便于用户一眼确认连的是哪台。
-adb 路径：环境变量 ADB_PATH，否则用 MUMU_ROOT / 常见安装目录下的 nx_main\adb.exe。
+adb 路径：环境变量 ADB_PATH，否则交给 agent/mumu_locator 统一解析
+（实例配置 SoftwarePath/AdbDevice.Name → 运行进程 exe → 注册表 → 布局扫描
+→ 有界深度搜索 → PATH）；解析不到时：--apply 记录警告并跳过预检（不中止
+任务链），--check 明确报错并列出已检查的位置；绝不返回裸 "adb"。
 """
 
 from __future__ import annotations
@@ -67,11 +70,14 @@ import device_judge  # noqa: E402  判据唯一来源：方向/渲染面/黑屏�
 # （agent/ensure_mumu.py）共用同一份实现，避免三处口径漂移。
 sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 from device_identity import filter_by_target, pick_entry, target_android_id  # noqa: E402
+import mumu_locator  # noqa: E402  MuMu/adb 定位唯一来源（与 ensure_mumu 共用）
 
-MUMU_ROOTS = (
-    r"D:\Program Files\Netease\MuMu",
-    r"C:\Program Files\Netease\MuMu",
-)
+# 中文 Windows（cp936）兜底：不可编码字符替换掉，避免 print 打断预检流程。
+try:
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
+except (AttributeError, OSError, ValueError):
+    pass
 
 # 尺寸/密度/判据常量与切换实现（LANDSCAPE_SIZE / PORTRAIT_SIZE / DENSITY /
 # EXPECTED_* / BLACK_* / ensure_landscape_orientation）统一在
@@ -83,7 +89,7 @@ EXIT_ADB = 1
 EXIT_PREFLIGHT = 2
 EXIT_DEVICE_IDENTITY = 3
 
-# 壳（MFAAvalonia）会把当前连接的设备实时写回实例配置；预检据此核对
+# 壳（MaaCrossCoreX）会把当前连接的设备实时写回实例配置；预检据此核对
 # 「壳连的那台」和「按 android_id 认出来的那台」是不是同一台（P-078）。
 SHELL_INSTANCE_CONFIGS = (
     Path("config/instances/default.json"),
@@ -110,28 +116,38 @@ def log(message: str) -> None:
 
 
 def mumu_root() -> Path | None:
-    """定位 MuMu 安装根目录，找不到时返回 None。"""
-    roots = []
-    env_root = os.environ.get("MUMU_ROOT")
-    if env_root:
-        roots.append(Path(env_root))
-    roots += [Path(item) for item in MUMU_ROOTS]
-    for root in roots:
-        if (root / "nx_main" / "MuMuManager.exe").is_file():
-            return root
-    return None
+    """定位 MuMu 安装根目录（顺序见 mumu_locator），找不到时返回 None。"""
+    root, _manager, _adb = mumu_locator.find_mumu(PROJECT_ROOT)
+    return root
+
+
+def mumu_manager() -> Path | None:
+    """定位 MuMuManager.exe（兼容定制版的 shell\\ 布局），找不到时返回 None。"""
+    _root, manager, _adb = mumu_locator.find_mumu(PROJECT_ROOT)
+    return manager
+
+
+_adb_cache: list[str] = []
+_adb_error = ""
 
 
 def adb_path() -> str:
-    env_adb = os.environ.get("ADB_PATH")
-    if env_adb:
-        return env_adb
-    root = mumu_root()
-    if root:
-        candidate = root / "nx_main" / "adb.exe"
-        if candidate.is_file():
-            return str(candidate)
-    return "adb"
+    """解析 adb 绝对路径；解析不到返回 ""（绝不回落裸 "adb"）。"""
+    global _adb_error
+    if _adb_cache:
+        return _adb_cache[0]
+    try:
+        path = mumu_locator.resolve_adb(PROJECT_ROOT)
+    except mumu_locator.MuMuNotFound as exc:
+        _adb_error = str(exc)
+        return ""
+    _adb_cache.append(path)
+    return path
+
+
+def adb_error() -> str:
+    """adb_path() 返回空串时的详细原因（含已检查的位置）。"""
+    return _adb_error
 
 
 _serial_cache: list[str] = []
@@ -139,15 +155,15 @@ _serial_cache: list[str] = []
 
 def mumu_labels() -> dict[str, str]:
     """serial → `实例名 (index N)`；非 MuMu 或读不到时返回空表（只用于显示）。"""
-    root = mumu_root()
-    if root is None:
+    manager = mumu_manager()
+    if manager is None:
         return {}
-    manager = str(root / "nx_main" / "MuMuManager.exe")
     try:
         result = subprocess.run(
-            [manager, "info", "-v", "all"],
+            [str(manager), "info", "-v", "all"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=15,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -197,6 +213,7 @@ def online_serials() -> list[str]:
             [adb_path(), "devices"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=12,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -367,6 +384,7 @@ def adb_raw(args: list[str], timeout: int = 20) -> tuple[int, str, str]:
             [adb_path(), *args],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=timeout,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -382,6 +400,7 @@ def run_adb(*args: str, timeout: int = 20) -> tuple[int, str, str]:
             [adb_path(), "-s", adb_serial(), *args],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=timeout,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -432,7 +451,7 @@ def get_orientation() -> int | None:
 def ensure_landscape_orientation() -> None:
     """竖→横→reset 切换（实现唯一在 device_judge.ensure_landscape_orientation）。
 
-    背景：JCZX 物理面板 720×1280（竖），游戏 Activity 锁竖屏；
+    背景：<实例> 物理面板 720×1280（竖），游戏 Activity 锁竖屏；
     直接 `wm size 1280x720`（Override）会把已横屏设备改坏（实测
     mCurrentOrientation 翻成 0、宿主窗口压成 0.56 竖条）。
     dance 细节见 device_judge 同名函数的 docstring，勿在此复刻。
@@ -567,14 +586,13 @@ def preflight(retries: int = 4, interval: float = 1.2) -> dict:
 
 def mumu_index_for(serial: str) -> str | None:
     """用当前选中的 serial 反查 MuMu 实例 index（只用于窗口诊断，不参与选择）。"""
-    root = mumu_root()
-    if root is None or not serial:
+    manager = mumu_manager()
+    if manager is None or not serial:
         return None
-    manager = str(root / "nx_main" / "MuMuManager.exe")
     try:
         result = subprocess.run(
-            [manager, "info", "-v", "all"],
-            capture_output=True, text=True, errors="replace", timeout=15,
+            [str(manager), "info", "-v", "all"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         payload = json.loads(result.stdout[result.stdout.find("{"):])
@@ -598,17 +616,16 @@ def host_window_warning() -> str:
     """
     if os.name != "nt":
         return ""
-    root = mumu_root()
-    if root is None:
+    manager = mumu_manager()
+    if manager is None:
         return ""
-    manager = root / "nx_main" / "MuMuManager.exe"
     index = mumu_index_for(adb_serial())
     if index is None:
         return ""
     try:
         result = subprocess.run(
             [str(manager), "info", "-v", index],
-            capture_output=True, text=True, errors="replace", timeout=15,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         payload = result.stdout[result.stdout.find("{"):]
@@ -667,8 +684,19 @@ def main() -> int:
                       help="任务真正开始前使用：先探测原值，竖屏才切换，失败按原值回滚")
     args = parser.parse_args()
 
+    if not adb_path():
+        for line in (adb_error() or "未找到可用的 adb.exe（不回落到裸 adb）").splitlines():
+            log(line)
+        if args.apply:
+            # 只影响宿主侧定位，不代表设备异常：不中止整条任务链（2026-11-18）。
+            log("警告：本次仅 adb 定位失败，已跳过设备预检；任务链继续（壳已连接时后续任务照跑）。")
+            log("如需恢复预检：按上面「怎么修」填一次 ADB 路径，再重跑任务。")
+            return EXIT_OK
+        return EXIT_ADB
+
     if not adb_serial():
-        log("未找到唯一的交错战线实例（实例里必须装有 com.megagame.crosscore.bilibili）")
+        log("未找到唯一的交错战线实例（实例里必须装有官服 com.megagame.crosscore "
+            "或 B 服 com.megagame.crosscore.bilibili）")
         log("候选端口与查包结果见上；请确认目标模拟器实例已启动，或用 ADB_SERIAL 指定已装游戏的实例")
         if not os.environ.get("ADB_SERIAL"):
             log("提示：如果壳顶部显示「当前控制器：请选择模拟器」，请先在壳首页选择模拟器/ADB 控制器；"
@@ -708,6 +736,11 @@ def main() -> int:
         return EXIT_OK
 
     log(f"预检失败：{info['reason']}")
+    orientation = device_judge.get_orientation(adb_serial(), adb_path())
+    log(
+        f"期望：{device_judge.EXPECTED_W}×{device_judge.EXPECTED_H} 横屏（tablet.3）；"
+        f"当前：渲染面 {info.get('w')}×{info.get('h')}，orientation={orientation}"
+    )
     log(f"详情：{info}")
     log("已中止本次自动化（预检失败，识别会失准）。请确认 MuMu 实例分辨率 1280x720 且已横屏"
         "（adb shell dumpsys display 查 mCurrentOrientation，0/2=竖 1/3=横）；"

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """把 tutorial_once 的旧实例键迁移成「实例:账号UID」键，支持 dry-run。
 
-旧格式：{"tutorial_build10": {"jczx": 1}}        # 只有实例，同一实例多账号会串用
-新格式：{"tutorial_build10": {"jczx:104445339": 1}}
+旧格式：{"tutorial_build10": {"<实例>": 1}}        # 只有实例，同一实例多账号会串用
+新格式：{"tutorial_build10": {"<实例>:<uid>": 1}}
 
 规则：
   * 只新增新键，**不删除**旧键（旧键保留可读，便于回滚与人工核对）；
@@ -15,7 +15,7 @@
 用法：
   python scripts/migrate_tutorial_state.py                 # dry-run，打印映射
   python scripts/migrate_tutorial_state.py --apply         # 真正写入
-  python scripts/migrate_tutorial_state.py --account-uid 104445339   # 显式声明当前账号
+  python scripts/migrate_tutorial_state.py --account-uid <uid>   # 显式声明当前账号
 """
 
 from __future__ import annotations

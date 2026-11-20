@@ -9,8 +9,11 @@
 日常链路唯一入口：infra_shift → 节点 基建_换班。
 四层复核，任一不过就存图并失败退出（交给 on_error 停止任务）：
   ① 重开预设弹窗：目标按钮 使用→工作中，原工作按钮 →使用；
-  ② 面板外电力/负载文案必须变化；
+  ② 面板外电力/负载文案必须变化（实测同功耗，只记录）；
   ③ 切完等 2.5s，该设施整组没有红脸；
+     例外：单槽设施（合成工厂）只有 1 名驻员，其心情被一次合成操作瞬时消耗，
+     红脸属于正常工作态而不是换班失败，因此不做「红比例归零」硬校验，
+     只记录 WARN 并继续下一个设施；红槽数意外上升仍判失败；
   ④ 误伤：其他设施可见槽位数/红绿态、全局人数不变。
 
 黑名单：预设3/4 的 ⚠50 永不点击；任何购买/消耗按钮不点。
@@ -29,13 +32,24 @@ from pathlib import Path
 from maa.custom_action import CustomAction
 
 import infra_mood as mood
+import workspace_paths
+from job_next import write_hint
+
+
+def _report_next_run(swapped: bool) -> None:
+    """任务自报 NextRun：面板只有红/绿徽章、没有倒计时，因此不写 notBefore；
+    只标记本次是否真换班，时间由壳按实测「换班→红脸」间隔学习、样本不足时用静态 480 分钟。"""
+    write_hint("infra_shift", minutes=None, source="self", swapped=swapped)
 
 _MCC_ROOT = Path(__file__).resolve().parents[1]
 _LOG_FILE = _MCC_ROOT / "logs" / "infra_shift.log"
 _BASELINE_DIR = os.environ.get("INFRA_RED_BASELINE_DIR") or str(
-    Path(__file__).resolve().parents[3] / "sandbox" / "red_baseline"
+    workspace_paths.maa_root(_MCC_ROOT) / "sandbox" / "red_baseline"
 )
 _OPTION_NAME = "基建_换班预设覆盖"
+# 单槽设施：整栋只有 1 名驻员（合成工厂），且该角色心情由合成操作瞬时消耗。
+# 红脸不代表换班没做成，复核③对它们降级为记录，不作失败。
+SINGLE_SLOT_FACILITIES = ("合成工厂",)
 
 log = logging.getLogger("laa.infra")
 
@@ -564,11 +578,22 @@ def _process_facility(context, name, baseline, preferred, handled=()):
         return False
     after_row = mood.measure_row(mood.image_rgb(image3), name, box3)
     if mood.needs_shift(after_row):
-        _save(image3, "fail_red_left_%s" % name)
-        _note("%s：复核③失败，切换后仍有红脸 %s" % (name, after_row["red_slots"]))
-        return False
-    _note("%s：复核③通过，整组红比例 %.3f/绿比例 %.3f"
-          % (name, after_row["red_ratio"], after_row["green_ratio"]))
+        if name in SINGLE_SLOT_FACILITIES:
+            _save(image3, "warn_red_left_%s" % name)
+            if len(after_row["red_slots"]) > len(before_row["red_slots"]):
+                _note("%s：复核③失败，单槽设施红槽数意外上升 %s→%s"
+                      % (name, before_row["red_slots"], after_row["red_slots"]))
+                return False
+            _note("%s：复核③记录，单槽设施切换后仍红 %s（该角色心情由合成操作瞬时消耗，"
+                  "红脸属正常态，不判失败），继续下一设施"
+                  % (name, after_row["red_slots"]))
+        else:
+            _save(image3, "fail_red_left_%s" % name)
+            _note("%s：复核③失败，切换后仍有红脸 %s" % (name, after_row["red_slots"]))
+            return False
+    else:
+        _note("%s：复核③通过，整组红比例 %.3f/绿比例 %.3f"
+              % (name, after_row["red_ratio"], after_row["green_ratio"]))
 
     # 复核④：误伤
     current_rows, _boxes = _measure_view(context, image3)
@@ -594,6 +619,7 @@ def run_shift(context) -> bool:
           % (len(red_rows), red_rows, len(baseline_data["red"]), path))
     if not red_rows:
         _note("巡检通过：全部绿脸，无需换班（到点检测，不切预设）")
+        _report_next_run(swapped=False)
         return True
 
     preferred = _preferred_presets()
@@ -607,6 +633,7 @@ def run_shift(context) -> bool:
             return False
         handled.append(name)
     _note("本轮换班结束，用时完成")
+    _report_next_run(swapped=True)
     return True
 
 

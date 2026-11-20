@@ -4,10 +4,12 @@
 
 - chip_filter_select：在候选列表页打开筛选面板，按任务面板选项勾选
   芯片品质 / 芯片类型 / 佩戴类型 / 主技能，确定后点第一张卡。
-  品质可多选：按「品质外层 × 主技能内层」展开成组逐组处理，每轮只选一个
-  品质 + 一个主技能、只改一张芯片，组的进度写在 custom_action_param.cursor
-  里（context.override_pipeline 回写），下一轮从该组继续。
-  某项在面板里找不到、或筛选后无候选，记 error 并跳过该项（不顶替别的芯片）。
+  品质可多选：按「品质外层 × 主技能内层」展开成组；同一组内持续取卡改造
+  （已改造的卡出库后列表自动推进），直到该组筛出「暂无芯片」才换下一组。
+  当前组序号与计数写在 custom_action_param（cursor / group_built / built_total），
+  改造完成后回到本节点原组续跑；槽位满由下游「芯片_槽位检查」收尾，本轮累计
+  改造上限 max_total（默认 4）与同组防呆上限 max_per_group（默认 20）兜底。
+  某项在面板里找不到、或筛选后无候选，记日志并跳过该项（不顶替别的芯片）。
 - chip_no_target：列表出现「暂无芯片」时判断改造槽占用，常态跳过并正常结束，
   仅当改造槽可读且为 0/4 时判真异常失败；mode=slot_guard 时用于每轮改造前的
   槽位预检（槽位已满则记「槽位不足，未改造」并正常结束）。
@@ -27,7 +29,6 @@ import ui_common
 log = logging.getLogger("laa.chip_build")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CHIP_TARGET_PATH = PROJECT_ROOT / "config" / "chip_target.json"
 
 PANEL_ROI = [170, 95, 960, 470]
 TOP_HEADING_ROI = [380, 120, 520, 60]
@@ -39,7 +40,7 @@ SLOT_ROI = [980, 100, 200, 60]
 
 # 滑动必须落在面板可滚动的选项区（y≈470）且避开选项文字列：
 # 用右边缘 x=1100（第 4 列文字右界≈998），否则起点压在选项上会被判成点击、误选别的技能。
-SCROLL_X = 1100
+SCROLL_X = 640
 SCROLL_BEGIN = (SCROLL_X, 470)
 SCROLL_END = (SCROLL_X, 310)
 
@@ -271,7 +272,13 @@ def _find_and_click_panel_text(context: Context, name: str, max_steps: int = 14)
                     break
             _swipe(context, SCROLL_BEGIN, SCROLL_END, 1200)
             time.sleep(0.6)
-    log.error("筛选面板内「%s」多次点击仍未进入选中态", name)
+    fail_image = _shot(context)
+    header_box = _find_text(context, fail_image, PANEL_ROI, ["主技能"])
+    _dump_frame(fail_image, f"chip_panel_option_not_found_{name}.png")
+    log.error(
+        "筛选面板内「%s」多次点击仍未进入选中态（主技能区标题%s；面板可能未滚到该分区）",
+        name, "已在视野" if header_box else "不在视野",
+    )
     return False
 
 
@@ -285,13 +292,17 @@ def _scroll_panel_to_top(context: Context, max_steps: int = 14) -> bool:
 
     滑动改用 600ms 慢拖：300ms 的滑动会触发惯性甩动，一甩就跨过整个分区，
     截图落在滚动中途时坐标全错。命中标题后还要静置复看一次，避免把甩动
-    过程中的瞬时帧当成已回顶。
+    过程中的瞬时帧当成已回顶。拖动落点收在面板内部（x=SCROLL_X），面板一旦
+    被关掉就停手，避免在列表页上空滑把列表滚走。
     """
-    for _ in range(max_steps):
+    for step in range(max_steps):
         if _heading_visible(context):
             time.sleep(0.25)
             if _heading_visible(context):
                 return True
+        if step % 4 == 3 and not _panel_open(context):
+            log.warning("回顶过程中筛选面板已关闭，停止拖动")
+            return False
         _swipe(context, SCROLL_END, SCROLL_BEGIN, 600)
         time.sleep(0.35)
     time.sleep(0.25)
@@ -299,48 +310,54 @@ def _scroll_panel_to_top(context: Context, max_steps: int = 14) -> bool:
 
 
 def _reset_panel(context: Context) -> bool:
-    """点「重置」并确认品质行回到「全部」选中，避免沿用上一轮残留筛选。"""
+    """点「重置」并确认品质行回到「全部」选中，避免沿用上一轮残留筛选。
+
+    每轮先复核面板是否还在：面板被上一步点掉时（历史上「重置」落点被当成
+    点外关闭）先重新打开再操作，避免在列表页上盲滑。「芯片品质到了顶部」
+    只作为参考，真正判据是品质行「全部」为金色选中。
+    """
     for attempt in range(3):
+        if not _panel_open(context):
+            log.warning("重置前筛选面板不在，重新打开（第 %d 次）", attempt + 1)
+            if not _ensure_panel(context):
+                time.sleep(0.6)
+                continue
         _click_text(context, _shot(context), BUTTON_ROI, ["重置"], exact=True)
         time.sleep(0.5)
-        if not _scroll_panel_to_top(context):
-            log.warning("面板未能滚回顶部，第 %d 次重试", attempt + 1)
-            time.sleep(0.4)
-            continue
+        if not _panel_open(context):
+            log.warning("点「重置」后筛选面板消失（落点可能压在确定/面板外），第 %d 次重开", attempt + 1)
+            if not _ensure_panel(context):
+                time.sleep(0.6)
+                continue
+        reached_top = _scroll_panel_to_top(context)
         image = _shot(context)
         box = _find_text(context, image, [150, 150, 1000, 120], ["全部"], exact=True)
         if box is not None and _stable_state(context, box) == "gold":
-            log.info("筛选面板已重置（芯片品质=全部 选中）")
+            log.info("筛选面板已重置（芯片品质=全部 选中；回顶标题=%s）",
+                     "已确认" if reached_top else "未确认，按品质行判定通过")
             return True
-        log.warning("重置后品质行未回到「全部」，第 %d 次重试", attempt + 1)
+        log.warning("重置后品质行未回到「全部」，第 %d 次重试（回顶标题=%s）",
+                    attempt + 1, "已确认" if reached_top else "未确认")
         time.sleep(0.4)
     log.error("筛选面板重置失败，拒绝沿用残留筛选继续")
     return False
 
 
 
-def _load_config_targets() -> list:
-    try:
-        data = json.loads(CHIP_TARGET_PATH.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError):
-        return []
-    if isinstance(data, dict):
-        values = data.get("targets")
-        if isinstance(values, list):
-            return [str(item) for item in values if str(item).strip()]
-        name = str(data.get("name") or "").strip()
-        if name:
-            return [name]
-    return []
-
-
 def collect_targets(param: dict) -> list:
-    """面板勾选（t_* 键）优先；未显式传 targets 时回退 config/chip_target.json。
+    """面板勾选（t_* 键）与显式 targets/skills 优先。
 
-    显式传 targets=[]（或空字符串）表示「不建造」，直接返回 []，不再回退配置。
+    2026-11-11 起不再回退 config/chip_target.json：参数里没有 targets/skills、
+    也没有任何 t_* 勾选，就视为「未配置」，返回 [] 由调用方跳过建造段。
+    壳侧曾把 custom_action_param 整体替换成 {"wear":"全部"}，targets 丢失后
+    这里会隐式回落「震慑」，导致没勾主技能也去筛震慑。
     """
-    has_explicit_targets = "targets" in param
-    targets = [str(item) for item in (param.get("targets") or []) if str(item).strip()]
+    raw = param.get("targets")
+    if raw is None:
+        raw = param.get("skills")
+    if isinstance(raw, str):
+        raw = [raw]
+    targets = [str(item) for item in (raw or []) if str(item).strip()]
     for key, value in param.items():
         if key.startswith("t_") and value:
             targets.append(key[2:])
@@ -348,11 +365,7 @@ def collect_targets(param: dict) -> list:
     for name in targets:
         if name not in deduped:
             deduped.append(name)
-    if deduped:
-        return deduped
-    if has_explicit_targets:
-        return []
-    return _load_config_targets()
+    return deduped
 
 
 def collect_levels(param: dict) -> list:
@@ -372,16 +385,32 @@ def collect_levels(param: dict) -> list:
     return deduped
 
 
-def _persist_cursor(context: Context, node_name: str, param: dict, cursor: int) -> None:
-    """把处理进度写回本节点的 custom_action_param，供下一轮（改造完成后回到筛选）续跑。"""
+def _persist_cursor(context: Context, node_name: str, param: dict, cursor: int,
+                    group_built: int = 0, built_total: int = 0) -> None:
+    """把处理进度写回本节点的 custom_action_param，供下一轮（改造完成后回到筛选）续跑。
+
+    cursor 是当前「品质 × 主技能」组序号；group_built 是该组已改造张数，
+    built_total 是本轮累计改造张数。只有该组筛出「暂无芯片」才推进 cursor。
+    """
     new_param = dict(param)
     new_param["cursor"] = int(cursor)
+    new_param["group_built"] = int(group_built)
+    new_param["built_total"] = int(built_total)
     try:
         context.override_pipeline(
             {node_name: {"action": {"param": {"custom_action_param": new_param}}}}
         )
     except Exception as exc:  # 写回失败不阻断本轮，只是下一轮会从头再来
         log.warning("写回主技能处理进度失败（%s）", exc)
+
+
+def _int_param(param: dict, key: str, default: int) -> int:
+    """读取正整数参数；缺省/非法时用 default。"""
+    try:
+        value = int(param.get(key))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
 
 
 class ChipFilterSelectAction(CustomAction):
@@ -394,7 +423,7 @@ class ChipFilterSelectAction(CustomAction):
             log.info("未配置任何目标芯片，跳过建造段并正常结束")
             return True
         if not any(key.startswith("t_") for key in param):
-            log.info("任务面板未勾选芯片，回退配置文件目标：%s", targets)
+            log.info("任务面板未勾选芯片，使用参数显式 targets/skills：%s", targets)
 
         levels = collect_levels(param) or ["全部"]
         chip_type = str(param.get("chip_type") or "全部")
@@ -403,10 +432,24 @@ class ChipFilterSelectAction(CustomAction):
             cursor = max(0, int(param.get("cursor") or 0))
         except (TypeError, ValueError):
             cursor = 0
+        try:
+            group_built = max(0, int(param.get("group_built") or 0))
+        except (TypeError, ValueError):
+            group_built = 0
+        try:
+            built_total = max(0, int(param.get("built_total") or 0))
+        except (TypeError, ValueError):
+            built_total = 0
+        max_total = _int_param(param, "max_total", 4)
+        max_per_group = _int_param(param, "max_per_group", 20)
 
         pairs = [(level, name) for level in levels for name in targets]
         if cursor >= len(pairs):
             log.info("品质 × 主技能已全部处理完（共 %d 组），回退任务结束", len(pairs))
+            context.override_next(argv.node_name, ["任务结束"])
+            return True
+        if built_total >= max_total:
+            log.info("本轮改造已达槽位上限 %d 张，正常结束", max_total)
             context.override_next(argv.node_name, ["任务结束"])
             return True
 
@@ -431,30 +474,46 @@ class ChipFilterSelectAction(CustomAction):
                 )
                 skipped.append(f"{level}×{name}")
                 cursor += 1
+                group_built = 0
                 continue
             if not _confirm_panel(context):
                 return False
-            cursor += 1
             image = _shot(context)
             list_text = " ".join(text for text, _ in _ocr(context, image, LIST_ROI))
             if "暂无芯片" in list_text:
-                log.error(
-                    "品质 %s + 主技能「%s」无候选芯片，跳过该组（继续下一组）", level, name,
+                log.info(
+                    "品质 %s + 主技能「%s」已无候选（本组已改造 %d 张），切换到下一组",
+                    level, name, group_built,
                 )
-                skipped.append(f"{level}×{name}")
+                if group_built == 0:
+                    skipped.append(f"{level}×{name}")
+                cursor += 1
+                group_built = 0
                 continue
-            _persist_cursor(context, argv.node_name, param, cursor)
+            if group_built >= max_per_group:
+                log.warning(
+                    "品质 %s + 主技能「%s」本组已连续改造 %d 张仍未耗尽，按防呆上限换组",
+                    level, name, group_built,
+                )
+                cursor += 1
+                group_built = 0
+                continue
+            group_built += 1
+            built_total += 1
+            _persist_cursor(context, argv.node_name, param, cursor,
+                            group_built, built_total)
             point = param.get("card_point") or [170, 175]
             context.tasker.controller.post_click(int(point[0]), int(point[1])).wait()
             log.info(
-                "品质 %s + 主技能「%s」命中，点选第一张芯片 @(%d,%d)%s",
-                level, name, int(point[0]), int(point[1]),
-                f"（本轮跳过 {skipped}）" if skipped else "",
+                "品质 %s + 主技能「%s」命中，点选本组第 %d 张（本轮累计 %d/%d）@(%d,%d)%s",
+                level, name, group_built, built_total, max_total,
+                int(point[0]), int(point[1]),
+                f"（跳过 {skipped}）" if skipped else "",
             )
             time.sleep(1.0)
             return True
 
-        _persist_cursor(context, argv.node_name, param, cursor)
+        _persist_cursor(context, argv.node_name, param, cursor, 0, built_total)
         if skipped:
             log.info("本轮跳过 %d 项：%s", len(skipped), skipped)
         image = _shot(context)
@@ -463,25 +522,58 @@ class ChipFilterSelectAction(CustomAction):
             log.info("筛选结果为空 → 交由「暂无芯片」按改造槽占用收尾")
             return False
         _close_panel(context)
-        log.info("没有可继续处理的目标芯片，正常结束")
+        log.info("没有可继续处理的目标芯片，正常结束（本轮已改造 %d 张）", built_total)
         context.override_next(argv.node_name, ["任务结束"])
         return True
 
 
+def _dump_frame(image, name: str):
+    """取证用：把整屏帧写到 debug/ 下，失败不影响主流程。"""
+    if image is None:
+        return None
+    try:
+        import numpy as np
+        from PIL import Image
+
+        directory = PROJECT_ROOT / "debug"
+        os.makedirs(directory, exist_ok=True)
+        path = directory / name
+        Image.fromarray(np.asarray(image)[:, :, ::-1]).save(path)
+        log.info("已保存取证帧 %s", path)
+        return str(path)
+    except Exception as exc:  # noqa: BLE001 取证失败不阻断任务
+        log.warning("保存取证帧 %s 失败：%s", name, exc)
+        return None
+
+
 def _ensure_panel(context: Context) -> bool:
-    """确保筛选面板已打开；「筛选」按钮偶发首次点击不落地，逐次重点并复核。"""
+    """确保筛选面板已打开；「筛选」按钮偶发首次点击不落地，逐次重点并复核。
+
+    2026-11-11 实机：候选列表还没加载完就去 OCR「筛选」，一次没命中就直接失败，
+    后续整段筛选/建造全断。现在每次重试前先确认列表 ROI 已有文字（加载完成），
+    未加载则等下一轮；列表已加载仍找不到入口才记 error 并留帧（fail-closed）。
+    """
     if _panel_open(context):
         return True
+    last_image = None
     for attempt in range(4):
         image = _shot(context)
+        last_image = image
+        list_text = " ".join(text for text, _ in _ocr(context, image, LIST_ROI)).strip()
+        if not list_text:
+            log.info("候选列表尚未加载，等待后再找「筛选」入口（第 %d 次）", attempt + 1)
+            time.sleep(0.8)
+            continue
         if not _click_text(context, image, HEADER_ROI, ["筛选"]):
-            log.error("候选列表页未找到「筛选」入口")
-            return False
+            log.warning("候选列表页未找到「筛选」入口（第 %d 次，列表已加载）", attempt + 1)
+            time.sleep(0.6)
+            continue
         time.sleep(1.2)
         if _panel_open(context):
             log.info("筛选面板已打开（第 %d 次点击后）", attempt + 1)
             return True
         log.info("等待筛选面板打开（第 %d 次点击后）", attempt + 1)
+    _dump_frame(last_image, "chip_filter_entry_not_found.png")
     log.error("筛选面板未打开（OCR 未见「筛选范围」/重置+确定）")
     return False
 

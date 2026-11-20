@@ -4,7 +4,7 @@
 便于先离线确认分数再落到生产代码。
 
 用法：
-    python tools/capture_chip_main_lv2.py --address 127.0.0.1:16416
+    python tools/capture_chip_main_lv2.py --address 127.0.0.1:&lt;port&gt;
 """
 
 from __future__ import annotations
@@ -120,10 +120,10 @@ class FinderAction(CustomAction):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--address", default="127.0.0.1:16416")
+    parser.add_argument("--address", default="127.0.0.1:5555")
     args = parser.parse_args()
-    if args.address != "127.0.0.1:16416":
-        raise SystemExit("控制器必须是 127.0.0.1:16416")
+    if not args.address:
+        raise SystemExit("必须指定 --address 控制器地址")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s",
                         datefmt="%H:%M:%S", stream=sys.stdout)
 

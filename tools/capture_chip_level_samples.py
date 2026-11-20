@@ -5,7 +5,7 @@
 这里抓「与模板来源不同的卡」的原生帧，做独立交叉验证。
 
 用法：
-    python tools/capture_chip_level_samples.py --address 127.0.0.1:16416 --levels 2,3
+    python tools/capture_chip_level_samples.py --address 127.0.0.1:&lt;port&gt; --levels 2,3
 """
 
 from __future__ import annotations
@@ -174,13 +174,13 @@ class SampleAction(CustomAction):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--address", default="127.0.0.1:16416")
+    parser.add_argument("--address", default="127.0.0.1:5555")
     parser.add_argument("--levels", default="2,3")
     parser.add_argument("--on-page", action="store_true",
                         help="已经停在芯片合成页时用：跳过导航，直接跑扫描动作")
     args = parser.parse_args()
-    if args.address != "127.0.0.1:16416":
-        raise SystemExit("控制器必须是 127.0.0.1:16416")
+    if not args.address:
+        raise SystemExit("必须指定 --address 控制器地址")
     levels = [int(v) for v in args.levels.split(",") if v.strip()]
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s",
                         datefmt="%H:%M:%S", stream=sys.stdout)

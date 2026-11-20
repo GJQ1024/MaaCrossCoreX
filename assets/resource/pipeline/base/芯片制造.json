@@ -25,7 +25,7 @@
     },
     "任务结束": {
         "next": [
-            "子任务_进入首页"
+            "芯片_回主界面"
         ],
         "$__mpe_code": {
             "position": {
@@ -33,6 +33,38 @@
                 "y": 760
             }
         }
+    },
+    "芯片_回主界面": {
+        "next": [
+            "芯片_确认主界面读资源",
+            "[JumpBack]子任务_进入首页"
+        ],
+        "timeout": 60000,
+        "on_error": [
+            "重连网络"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：芯片制造收尾回主界面，资源统计必须在主界面顶栏才能读到"
+    },
+    "芯片_确认主界面读资源": {
+        "recognition": "OCR",
+        "expected": ["补给站"],
+        "roi": [934, 582, 176, 127],
+        "pre_wait_freezes": { "time": 1000, "threshold": 0.95 },
+        "timeout": 15000,
+        "anchor": "主界面",
+        "action": "DoNothing",
+        "next": ["芯片_资源后"],
+        "on_error": ["芯片_资源后"],
+        "next_doc": "2026-11-15 资源统计接入：确认回主界面后读资源；确认失败也尝试读一次，读不到记 null（识别失败），不阻断收尾"
+    },
+    "芯片_资源后": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "ChipCraft", "phase": "after" },
+        "next": ["通用_回主界面并结束"],
+        "on_error": ["通用_回主界面并结束"],
+        "next_doc": "2026-11-15 资源统计接入：任务结束拍 after；无配对 before 时动作失败也不阻断收尾"
     },
     "开始制作流程": {
         "timeout": 4000,
@@ -143,7 +175,7 @@
             "type": "Click"
         },
         "next": [
-            "改造完成"
+            "芯片_改造上报"
         ],
         "on_error": [
             "任务结束"
@@ -155,6 +187,24 @@
                 "y": 30
             }
         }
+    },
+    "芯片_改造上报": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "job_next_hint",
+                "custom_action_param": {
+                    "job": "chip_build",
+                    "read": "chip_panel",
+                    "buffer_seconds": 120
+                }
+            }
+        },
+        "next": [
+            "改造完成"
+        ],
+        "doc": "任务级 NextRun 自报点：只有「开始改造」真正成功才经过这里。满仓/暂无芯片/槽位不足/费用闸拒绝都不会写 hint，避免误排 4 小时。"
     },
     "改造完成": {
         "next": [
@@ -461,7 +511,7 @@
         "on_error": [
             "暂无芯片"
         ],
-        "next_doc": "2026-11-08 由任务面板 option 反推筛选面板点选（芯片品质为多选 q_R1..q_R5，类型/佩戴单选，主技能多选 t_*）。levels 为品质默认值；实际按「品质外层 × 主技能内层」展开成组，cursor 是组的扁平序号。targets 默认空数组：主技能未勾选时直接跳过建造段正常结束；每轮只选一个品质+一个主技能、只点第一张卡，进度写回 cursor，改造完成后回到本节点续跑下一组；某项面板找不到或无候选则记 error 跳过，不顶替其他芯片；筛选后空列表走暂无芯片",
+        "next_doc": "2026-11-08 由任务面板 option 反推筛选面板点选（芯片品质为多选 q_R1..q_R5，类型/佩戴单选，主技能多选 t_*）。levels 为品质默认值；实际按「品质外层 × 主技能内层」展开成组，cursor 是组的扁平序号。targets 默认空数组：主技能未勾选时直接跳过建造段正常结束；同一组内持续取卡改造（已改造的卡出库后列表自动推进），直到该组筛出「暂无芯片」才 cursor+1 换下一组；进度写回 cursor/group_built/built_total，改造完成后回到本节点原组续跑；槽位满由下游「芯片_槽位检查」收尾，本轮累计上限 max_total=4、同组防呆 max_per_group=20；某项面板找不到或无候选则记录并跳过，不顶替其他芯片；筛选后空列表走暂无芯片",
         "$__mpe_code": {
             "position": {
                 "x": 1072,
@@ -471,15 +521,39 @@
     },
     "芯片制作任务开始": {
         "next": [
-            "进入基建",
-            "[JumpBack]子任务_进入首页"
+            "芯片_主界面门禁"
         ],
+        "next_doc": "2026-11-17 资源前回归修复：入口只走「芯片_主界面门禁」一次性确认主界面，再由门禁放行到 芯片_资源前。删除原先并列的 芯片_资源前/进入基建 与末尾 [JumpBack]子任务_进入首页——DirectHit 必中使这些并列项与 JumpBack 全部成为死代码（11-16/11-17 共 12 次 reco_timeout）；把 [JumpBack]子任务_进入首页 前置更糟：回跳重评父节点 next 会无限循环（实测 701 次空转 10 分钟）。",
         "$__mpe_code": {
             "position": {
                 "x": -1856,
                 "y": -433
             }
         }
+    },
+    "芯片_资源前": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "resource_stats",
+        "custom_action_param": { "task": "ChipCraft", "phase": "before" },
+        "next": [
+            "进入基建"
+        ],
+        "next_doc": "2026-11-15 资源统计接入：进入基建前在主界面拍资源快照"
+    },
+    "芯片_主界面门禁": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ensure_main",
+        "custom_action_param": {
+            "label": "芯片_主界面门禁",
+            "max_rounds": 4,
+            "cleanup_entry": "通用_回主界面并结束"
+        },
+        "next": [
+            "芯片_资源前"
+        ],
+        "next_doc": "2026-11-17 资源前回归修复：门禁内一次性确认主界面（补给站 OCR + 顶栏资源图标同帧命中），任一条不满足即按「待机点时钟 → 关遮罩 → 取消二次确认 → 点首页按钮 → 点左上返回箭头」有界自救（最多 4 轮，绝不盲按 BACK，主界面按 BACK 会退到 B 站游戏中心）；仍失败则留帧 + diag.fail + 通用_回主界面并结束 收尾后返回 False 判任务失败。参数与判据在 agent/ui_common.py::HOME_GUARD，本节点只引用。"
     },
     "芯片构建": {
         "recognition": {

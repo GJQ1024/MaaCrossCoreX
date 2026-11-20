@@ -1,0 +1,19 @@
+name: scope-guard selftest
+# 仅验证闸门脚本自身（自检 + 确认 .tmp 未入库），不校验 PR 改动集，也不拦截提交。
+# 需要按改动集校验时，本地执行：
+#   python tools/ci/pre_commit_scope.py --ci --base <ref>
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  scope-guard-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 闸门脚本自检
+        run: python tools/ci/pre_commit_scope.py --ci

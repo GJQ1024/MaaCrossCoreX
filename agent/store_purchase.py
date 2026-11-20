@@ -38,7 +38,8 @@ log = logging.getLogger("laa.store")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WHITELIST_PATH = PROJECT_ROOT / "config" / "purchase_whitelist.json"
 INSTANCES_DIR = PROJECT_ROOT / "config" / "instances"
-FRAME_DIR = PROJECT_ROOT / "debug" / "needframes"
+SANDBOX_DIR = Path(os.environ.get("MCC_SANDBOX_DIR") or (Path.home() / ".crosscore-auto"))
+FRAME_DIR = SANDBOX_DIR / "needframes"
 
 OCR_NODE = "通用_OCR探针"
 PAID_TOKENS = ("¥", "￥", "粲晶", "△", "凭证", "充值", "RMB", "美元")
@@ -46,8 +47,8 @@ PAID_TOKENS = ("¥", "￥", "粲晶", "△", "凭证", "充值", "RMB", "美元"
 # 余额保底：买前「余额-单价 < balance_floor」即停止该店（唯一金额类拦截）
 # 2026-11-06 用户口径：默认 0（买干净），余额不够付才停
 DEFAULT_BALANCE_FLOOR = 0
-# 幂等标记目录（与 needframes 同级的 sandbox/store_run，三份副本共享同一目录）
-RUN_DIR = FRAME_DIR.parent / "store_run"
+# 幂等标记目录（与 needframes 同级的 store_run，三份副本共享同一目录）
+RUN_DIR = SANDBOX_DIR / "store_run"
 IDEMPOTENT_WINDOW_SEC = 300
 
 # 货架版式（坐标来自 2026-11-05 19:10/19:17/19:20 实机帧 OCR box）

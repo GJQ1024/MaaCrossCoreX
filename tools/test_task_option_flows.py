@@ -56,32 +56,37 @@ def test_close_emulator_switch_for_both_resources():
 
 
 def test_order_friend_merged_task():
-    """添加+拉黑合并为「订单好友」，入口先检查配置，没填就早退。"""
+    """订单相关统一到「订单」任务：加好友 → 交付 → 拉黑；基建只留收资源/换班。"""
     interface = load("assets/interface.json")
     add = load("assets/resource/pipeline/base/添加订单好友.json")
+    order = load("assets/resource/pipeline/base/订单.json")
     names = [item["name"] for item in interface["task"]]
 
-    assert "订单好友" in names
+    assert "订单" in names and "订单好友" not in names
     assert "添加订单好友" not in names and "拉黑订单好友" not in names
 
-    task = next(item for item in interface["task"] if item["name"] == "订单好友")
-    assert task["entry"] == "订单好友_任务"
-    assert task["option"] == ["订单好友_好友ID"]
+    task = next(item for item in interface["task"] if item["name"] == "订单")
+    assert task["entry"] == "订单_任务"
+    assert "订单好友_好友ID" in task["option"]
+    assert "基建_订单群好友ID" not in interface["option"]
 
     option = interface["option"]["订单好友_好友ID"]
     assert option["type"] == "input"
     assert option["inputs"][0]["name"] == "好友ID"
     assert option["inputs"][0]["default"] == ""
 
-    gate = add["订单好友_任务"]
-    assert gate["action"]["param"]["custom_action"] == "订单好友_前置检查"
+    gate = order["订单_前置_添加订单群好友"]
+    assert gate["action"]["param"]["custom_action"] == "订单_检查好友配置"
     assert gate["next"] == ["订单好友添加流程"]
-    # 早退终端：无 next，任务按正常结束
-    assert not add["订单好友_跳过"].get("next")
-    # 加完后自动进拉黑阶段
-    assert add["加好友完毕"]["next"] == ["订单好友_拉黑阶段入口"]
-    assert add["订单好友_拉黑阶段入口"]["action"]["param"]["custom_action"] == "订单好友_拉黑检查"
-    assert add["订单好友_拉黑阶段入口"]["next"] == ["拉黑好友流程"]
+    # 加好友结束进入交付段，不再直接拉黑
+    assert add["加好友完毕"]["next"] == ["订单_加好友后衔接"]
+    assert order["订单_加好友后衔接"]["next"] == ["订单_交付入口"]
+    # 拉黑放在订单收尾
+    assert order["订单_后置_拉黑订单群好友"]["action"]["param"]["custom_action"] == "订单好友_拉黑检查"
+    assert order["订单_后置_拉黑订单群好友"]["next"] == ["拉黑好友流程"]
+
+    base = next(item for item in interface["task"] if item["name"] == "基建")
+    assert not base.get("option")
 
 
 def test_reward_claims_weekly_on_same_page():

@@ -27,6 +27,7 @@ from chip_filter_flow import instance_config_path
 from stop_guard import ensure_running
 
 import ui_common
+import workspace_paths
 
 log = logging.getLogger("laa.mainstory")
 
@@ -266,7 +267,8 @@ def _fuel(context, tag, roi=None, image=None, shot=None):
     return value
 
 
-SHOT_DIR = Path(__file__).resolve().parents[3] / "sandbox" / "shots"
+_MCC_ROOT = Path(__file__).resolve().parent.parent
+SHOT_DIR = workspace_paths.maa_root(_MCC_ROOT) / "sandbox" / "shots"
 
 
 def _snapshot(image, tag):

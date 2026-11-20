@@ -38,6 +38,16 @@ JDC_INCLUDE_DISABLED = False
 
 JDC_NAME_MATCH_RATIO = 0.50
 
+# OCR 易混字形组：同组字符在模糊匹配里按近似等价处理。
+# 实机证据：角色名「赤溟」被 OCR 读成「赤溪」，两者与「赤夕」的
+# 编辑相似度同为 0.50，旧逻辑按列表顺序先命中「赤夕」导致匹配错人。
+JDC_NAME_CONFUSABLE_GROUPS = (
+    "溟溪",
+)
+
+# 等长逐位比对时，易混字形按此权重计入（同字符为 1.0，其他为 0.0）
+JDC_NAME_CONFUSABLE_WEIGHT = 0.85
+
 
 # ============================================================
 # TAG 路线配置
@@ -157,6 +167,17 @@ jdc_route_total_stars = 27
 jdc_route_history = []
 
 
+# 入场次数（角斗场免费次数最多累计 3 次）
+# entry_count=0 表示默认行为（1 次）
+jdc_entry_count = 0
+
+jdc_entry_until_empty = False
+
+jdc_entry_done = 0
+
+JDC_MAX_FREE_ENTRIES = 3
+
+
 # ============================================================
 # 名字清洗
 # ============================================================
@@ -228,6 +249,58 @@ CHARACTER_NAME_MAP = {
 # OCR角色名匹配
 # ============================================================
 
+def character_glyph_similarity(
+    a: str,
+    b: str
+) -> float:
+
+    if a == b:
+        return 1.0
+
+    for group in JDC_NAME_CONFUSABLE_GROUPS:
+
+        if a in group and b in group:
+            return JDC_NAME_CONFUSABLE_WEIGHT
+
+    return 0.0
+
+
+def name_match_score(
+    ocr_name: str,
+    real_name: str
+):
+    """返回 (综合得分, 编辑相似度, 逐位字形相似度)。
+
+    综合得分 = max(编辑相似度, 逐位字形相似度)：
+    等长时逐位比对能识别「溟/溪」这类 OCR 易混字形，
+    从而在编辑相似度打平（如 0.50）时选对候选。
+    """
+
+    ratio = SequenceMatcher(
+        None,
+        ocr_name,
+        real_name
+    ).ratio()
+
+    # 长度不同没有逐位语义，直接按编辑相似度
+    if (
+        not ocr_name
+        or
+        len(ocr_name) != len(real_name)
+    ):
+        return ratio, ratio, 0.0
+
+    positional = sum(
+        character_glyph_similarity(a, b)
+        for a, b in zip(
+            ocr_name,
+            real_name
+        )
+    ) / len(ocr_name)
+
+    return max(ratio, positional), ratio, positional
+
+
 def match_character_name(
     ocr_name: str,
     min_ratio: float = JDC_NAME_MATCH_RATIO
@@ -278,7 +351,9 @@ def match_character_name(
 
     # 模糊匹配
     best_name = None
+    best_score = 0.0
     best_ratio = 0.0
+    best_positional = 0.0
 
     for c in characters:
 
@@ -296,27 +371,32 @@ def match_character_name(
         if not real_normalized:
             continue
 
-        ratio = SequenceMatcher(
-            None,
-            normalized,
-            real_normalized
-        ).ratio()
+        score, ratio, positional = (
+            name_match_score(
+                normalized,
+                real_normalized
+            )
+        )
 
-        if ratio > best_ratio:
+        if score > best_score:
 
+            best_score = score
             best_ratio = ratio
+            best_positional = positional
             best_name = real_name
 
     if (
         best_name is not None
         and
-        best_ratio >= min_ratio
+        best_score >= min_ratio
     ):
 
         print(
             "[角斗场] OCR角色名模糊匹配："
             f"{raw} -> {best_name} "
-            f"(相似度 {best_ratio:.2f})"
+            f"(相似度 {best_score:.2f}，"
+            f"编辑 {best_ratio:.2f}，"
+            f"字形 {best_positional:.2f})"
         )
 
         return best_name
@@ -324,7 +404,7 @@ def match_character_name(
     print(
         "[角斗场] OCR角色名无法匹配："
         f"{raw} "
-        f"(最高相似度 {best_ratio:.2f})"
+        f"(最高相似度 {best_score:.2f})"
     )
 
     return None
@@ -495,7 +575,15 @@ def save_jdc_state():
 
         "route_history": list(
             jdc_route_history
-        )
+        ),
+
+        "entry_count": jdc_entry_count,
+
+        "entry_until_empty": (
+            jdc_entry_until_empty
+        ),
+
+        "entry_done": jdc_entry_done
     }
 
     temp_file = (
@@ -552,6 +640,10 @@ def load_jdc_state():
     global jdc_route_total_stars
 
     global jdc_route_history
+
+    global jdc_entry_count
+    global jdc_entry_until_empty
+    global jdc_entry_done
 
     if not os.path.exists(
         JDC_STATE_FILE
@@ -688,6 +780,31 @@ def load_jdc_state():
             )
         )
 
+        jdc_entry_count = int(
+            data.get(
+                "entry_count",
+                0
+            )
+            or
+            0
+        )
+
+        jdc_entry_until_empty = bool(
+            data.get(
+                "entry_until_empty",
+                False
+            )
+        )
+
+        jdc_entry_done = int(
+            data.get(
+                "entry_done",
+                0
+            )
+            or
+            0
+        )
+
         print(
             "[角斗场] 状态恢复成功："
             f"phase={jdc_phase}"
@@ -760,6 +877,10 @@ def reset_jdc_state():
 
     global jdc_route_history
 
+    global jdc_entry_count
+    global jdc_entry_until_empty
+    global jdc_entry_done
+
     jdc_phase = (
         JDC_PHASE_SELECT
     )
@@ -793,6 +914,12 @@ def reset_jdc_state():
 
     jdc_route_history = []
 
+    jdc_entry_count = 0
+
+    jdc_entry_until_empty = False
+
+    jdc_entry_done = 0
+
     if os.path.exists(
         JDC_STATE_FILE
     ):
@@ -804,6 +931,182 @@ def reset_jdc_state():
     print(
         "[角斗场] 状态已重置"
     )
+
+
+# ============================================================
+# 入场次数控制
+# ============================================================
+
+def set_entry_config(
+    count,
+    until_empty
+):
+    """写入本次任务的入场配置（在导航前落盘，供后续轮次读取）。"""
+
+    global jdc_entry_count
+    global jdc_entry_until_empty
+    global jdc_entry_done
+
+    try:
+
+        count = int(
+            str(count).strip()
+            or
+            0
+        )
+
+    except Exception:
+
+        count = 0
+
+    if count < 0:
+
+        count = 0
+
+    jdc_entry_count = count
+
+    jdc_entry_until_empty = bool(
+        until_empty
+    )
+
+    jdc_entry_done = 0
+
+    save_jdc_state()
+
+    if jdc_entry_until_empty:
+
+        mode = (
+            "清空免费次数"
+            f"（最多 {JDC_MAX_FREE_ENTRIES} 次）"
+        )
+
+    else:
+
+        mode = (
+            f"指定 {count if count > 0 else 1} 次"
+        )
+
+    print(
+        "[角斗场] 入场配置："
+        + mode
+    )
+
+
+def reset_run_progress():
+    """清空单次入场的推关进度与角色池，保留入场次数配置。
+
+    每次「全部领取」代表一次入场结束，下一次入场的回合从 1 重新开始；
+    若不清 last_round，第二次入场会把回合1 全部当成已打过而不点，空转到失败。
+    """
+
+    global jdc_phase
+
+    global jdc_round
+    global jdc_groups
+    global jdc_preliminary
+    global jdc_final_team
+
+    global jdc_route_scores
+    global jdc_route_tags
+    global jdc_route_names
+
+    global jdc_route_last_round
+    global jdc_route_last_tag
+
+    global jdc_route_current_stars
+    global jdc_route_total_stars
+
+    global jdc_route_history
+
+    jdc_phase = (
+        JDC_PHASE_SELECT
+    )
+
+    jdc_round = 0
+
+    jdc_groups = []
+
+    jdc_preliminary = []
+
+    jdc_final_team = []
+
+    jdc_route_scores = {
+        "extra": 0.0,
+        "dot": 0.0,
+        "ret": 0.0,
+        "aoe": 0.0
+    }
+
+    jdc_route_tags = []
+
+    jdc_route_names = []
+
+    jdc_route_last_round = 0
+
+    jdc_route_last_tag = None
+
+    jdc_route_current_stars = 0
+
+    jdc_route_total_stars = 27
+
+    jdc_route_history = []
+
+    print(
+        "[角斗场] 单次入场进度已清空（回合/角色池/路线重置，入场次数保留）"
+    )
+
+
+def record_entry_done():
+    """一轮打完（全部领取）后记一次；返回累计已打次数。"""
+
+    global jdc_entry_done
+
+    jdc_entry_done += 1
+
+    reset_run_progress()
+
+    save_jdc_state()
+
+    print(
+        "[角斗场] 已完成入场次数："
+        f"{jdc_entry_done}"
+        f"（上限："
+        + (
+            str(JDC_MAX_FREE_ENTRIES)
+            if jdc_entry_until_empty
+            else
+            str(jdc_entry_count if jdc_entry_count > 0 else 1)
+        )
+        + "）"
+    )
+
+    return jdc_entry_done
+
+
+def need_next_entry():
+    """按配置判断是否还要再入场。"""
+
+    if jdc_entry_done >= JDC_MAX_FREE_ENTRIES:
+
+        print(
+            "[角斗场] 已达到免费次数上限"
+            f" {JDC_MAX_FREE_ENTRIES}，不再入场"
+        )
+
+        return False
+
+    if jdc_entry_until_empty:
+
+        return True
+
+    limit = (
+        jdc_entry_count
+        if jdc_entry_count > 0
+        else
+        1
+    )
+
+    return jdc_entry_done < limit
 
 
 # ============================================================

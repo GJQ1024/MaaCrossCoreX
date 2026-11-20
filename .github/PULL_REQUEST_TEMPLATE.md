@@ -1,7 +1,5 @@
 # Pull Request
 
-提交前请阅读 [PR 规范](../docs/zh_cn/develop/pull_request_guidelines.md)。
-
 ## 关联 Issue
 
 <!-- Closes #123 / Fixes #123 / Related #123；没有 Issue 时请说明需求来源。 -->
@@ -14,7 +12,7 @@
 
 <!-- 请写清楚执行了什么验证、结果如何。不要只写“已测试”。 -->
 
-- [ ] 我已阅读并遵守 [PR 规范](../docs/zh_cn/develop/pull_request_guidelines.md)
+- [ ] 我已自检：改动只涉及本 PR 声明的范围，未混入无关改动
 
 ## 截图 / 日志 / 说明
 
