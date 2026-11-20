@@ -3,7 +3,7 @@
     "name": "MaaCrossCoreX",
     "label": "",
     "description": "交错战线自动化（MaaCrossCoreX）：基于 MaaFramework 的任务自动化，含壳、资源与 agent 三层。",
-    "version": "v0.5.11",
+    "version": "v1.0.5",
     "icon": "resource/icon.png",
     "group": [
         {
