@@ -170,7 +170,7 @@
 
     "新手教程_安全区盲点": {
         "recognition": "DirectHit",
-        "roi": [440, 190, 400, 260],
+        "target": [440, 190, 400, 260],
         "action": "Click",
         "max_hit": 60,
         "next": [

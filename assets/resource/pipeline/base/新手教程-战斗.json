@@ -201,7 +201,7 @@
 
     "战斗_结算": {
         "recognition": "DirectHit",
-        "roi": [600, 300, 80, 80],
+        "target": [600, 300, 80, 80],
         "action": "Click",
         "max_hit": 2,
         "post_delay": 1500,
@@ -232,7 +232,7 @@
 
     "战斗_失败退出": {
         "recognition": "DirectHit",
-        "roi": [77, 617, 20, 20],
+        "target": [77, 617, 20, 20],
         "action": "Click",
         "max_hit": 2,
         "post_delay": 900,

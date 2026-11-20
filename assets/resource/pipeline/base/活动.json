@@ -66,12 +66,12 @@
   "活动_点击开始战斗": { "recognition": "OCR", "expected": "开始战斗", "roi": [780, 520, 300, 80], "action": "Click", "post_delay": 1000, "next": ["活动_掉落加成提示", "活动任务_扫荡奖励"], "$__mpe_code": { "position": { "x": 4200, "y": 360 } } },
   "活动_掉落加成提示": { "recognition": "OCR", "expected": ["掉落加成", "是否开启"], "roi": [380, 245, 760, 430], "action": "DoNothing", "next": ["通用_掉落加成使用", "通用_掉落加成不使用", "活动任务_扫荡奖励"], "$__mpe_code": { "position": { "x": 4500, "y": 360 } } },
   "活动任务_扫荡奖励": { "recognition": "OCR", "expected": ["扫荡成功", "扫荡成坊"], "roi": [0, 0, 900, 260], "action": "Click", "target_offset": [300, 430, 0, 0], "post_delay": 1800, "next": "活动_结算第二次点击", "$__mpe_code": { "position": { "x": 4800, "y": 360 } } },
-  "活动_结算第二次点击": { "recognition": "DirectHit", "action": "Click", "roi": [300, 430, 4, 4], "post_delay": 1200, "next": "活动_确认返回战斗选择页", "$__mpe_code": { "position": { "x": 5100, "y": 360 } } },
+  "活动_结算第二次点击": { "recognition": "DirectHit", "action": "Click", "target": [300, 430, 4, 4], "post_delay": 1200, "next": "活动_确认返回战斗选择页", "$__mpe_code": { "position": { "x": 5100, "y": 360 } } },
   "活动_确认返回战斗选择页": { "recognition": "OCR", "expected": "扫荡", "roi": [800, 520, 130, 100], "action": "DoNothing", "post_delay": 1500, "next": "活动_标记批次完成", "$__mpe_code": { "position": { "x": 5400, "y": 360 } } },
   "活动_标记批次完成": { "recognition": "DirectHit", "action": "Custom", "custom_action": "activity_atomic", "custom_action_param": { "operation": "mark_batch_done" }, "next": "活动_结算后分派", "$__mpe_code": { "position": { "x": 5700, "y": 360 } } },
   "活动_结算后分派": { "next": ["活动_扫荡全部完成", "活动_继续下一轮扫荡"], "$__mpe_code": { "position": { "x": 6000, "y": 360 } } },
   "活动_继续下一轮扫荡": { "recognition": "Custom", "custom_recognition": "activity_state", "custom_recognition_param": { "expected": "status:need_popup" }, "action": "DoNothing", "next": "活动_困难关战斗选择页", "$__mpe_code": { "position": { "x": 6300, "y": 360 } } },
   "活动_扫荡全部完成": { "recognition": "Custom", "custom_recognition": "activity_state", "custom_recognition_param": { "expected": "status:done" }, "action": "Custom", "custom_action": "activity_atomic", "custom_action_param": { "operation": "finish" }, "next": "活动_完成后返回主页", "$__mpe_code": { "position": { "x": 6300, "y": 540 } } },
-  "活动_完成后返回主页": { "recognition": "DirectHit", "action": "Click", "roi": [220, 45, 4, 4], "post_delay": 1500, "next": "活动_确认主界面", "$__mpe_code": { "position": { "x": 6600, "y": 540 } } },
+  "活动_完成后返回主页": { "recognition": "DirectHit", "action": "Click", "target": [220, 45, 4, 4], "post_delay": 1500, "next": "活动_确认主界面", "$__mpe_code": { "position": { "x": 6600, "y": 540 } } },
   "活动_确认主界面": { "recognition": "OCR", "expected": ["基地", "任务", "编队"], "roi": [560, 570, 440, 145], "threshold": 0.2, "action": "DoNothing", "$__mpe_code": { "position": { "x": 6900, "y": 540 } } }
 }

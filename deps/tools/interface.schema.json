@@ -180,6 +180,11 @@
                             "title": "详细描述",
                             "description": "帮助用户理解配置项的作用。支持文件路径、URL 或直接文本，内容支持 Markdown 格式"
                         },
+                        "doc": {
+                            "$ref": "#/definitions/i18nString",
+                            "title": "详细描述（doc，与 description 等价）",
+                            "description": "本项目资源统一使用 doc；保留 description 以兼容上游。"
+                        },
                         "icon": {
                             "$ref": "#/definitions/i18nString",
                             "title": "图标路径",
@@ -240,6 +245,11 @@
                             "title": "详细描述",
                             "description": "帮助用户理解配置项的作用。支持文件路径、URL 或直接文本，内容支持 Markdown 格式"
                         },
+                        "doc": {
+                            "$ref": "#/definitions/i18nString",
+                            "title": "详细描述（doc，与 description 等价）",
+                            "description": "本项目资源统一使用 doc；保留 description 以兼容上游。"
+                        },
                         "icon": {
                             "$ref": "#/definitions/i18nString",
                             "title": "图标路径",
@@ -299,6 +309,11 @@
                             "title": "详细描述",
                             "description": "帮助用户理解配置项的作用。支持文件路径、URL 或直接文本，内容支持 Markdown 格式"
                         },
+                        "doc": {
+                            "$ref": "#/definitions/i18nString",
+                            "title": "详细描述（doc，与 description 等价）",
+                            "description": "本项目资源统一使用 doc；保留 description 以兼容上游。"
+                        },
                         "icon": {
                             "$ref": "#/definitions/i18nString",
                             "title": "图标路径",
@@ -356,6 +371,11 @@
                             "$ref": "#/definitions/i18nString",
                             "title": "详细描述",
                             "description": "帮助用户理解配置项的作用。支持文件路径、URL 或直接文本，内容支持 Markdown 格式"
+                        },
+                        "doc": {
+                            "$ref": "#/definitions/i18nString",
+                            "title": "详细描述（doc，与 description 等价）",
+                            "description": "本项目资源统一使用 doc；保留 description 以兼容上游。"
                         },
                         "icon": {
                             "$ref": "#/definitions/i18nString",
@@ -418,6 +438,11 @@
                             "$ref": "#/definitions/i18nString",
                             "title": "详细描述",
                             "description": "帮助用户理解配置项的作用。支持文件路径、URL 或直接文本，内容支持 Markdown 格式"
+                        },
+                        "doc": {
+                            "$ref": "#/definitions/i18nString",
+                            "title": "详细描述（doc，与 description 等价）",
+                            "description": "本项目资源统一使用 doc；保留 description 以兼容上游。"
                         },
                         "icon": {
                             "$ref": "#/definitions/i18nString",

@@ -3185,7 +3185,11 @@
                     "title": "Format Property",
                     "description": "图片格式。可选，默认 \"png\"。",
                     "type": "string",
-                    "enum": ["png", "jpg", "jpeg"],
+                    "enum": [
+                        "png",
+                        "jpg",
+                        "jpeg"
+                    ],
                     "default": "png",
                     "markdownDescription": "*string*\n\n图片格式。可选，默认 `\"png\"`（无损）。\n\n可选值：`\"png\"` | `\"jpg\"` | `\"jpeg\"`"
                 },
@@ -4184,6 +4188,15 @@
                     "$ref": "#/$defs/jsonInt64",
                     "default": 20000,
                     "markdownDescription": "*int*\n\n识别超时时间，毫秒。可选，默认 20 * 1000 。\n\n设置为 -1 表示无限等待，永不超时。\n\n具体逻辑为 `while(!timeout) { foreach(next); sleep_until(rate_limit); }` 。"
+                },
+                "target": {
+                    "title": "Target Property",
+                    "description": "点击目标位置。MaaFramework 5.x 起替代 DirectHit 的 roi。",
+                    "type": [
+                        "boolean",
+                        "string",
+                        "array"
+                    ]
                 },
                 "on_error": {
                     "title": "On Error Property",

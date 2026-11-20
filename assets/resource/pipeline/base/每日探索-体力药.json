@@ -115,7 +115,7 @@
     "每日探索_点外边缘_一下": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [1120, 360, 4, 4],
+        "target": [1120, 360, 4, 4],
         "post_delay": 900,
         "next": ["每日探索_点外边缘_两下"],
         "$__mpe_code": { "position": { "x": 2050, "y": 60 } }
@@ -123,7 +123,7 @@
     "每日探索_点外边缘_两下": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [1120, 360, 4, 4],
+        "target": [1120, 360, 4, 4],
         "post_delay": 900,
         "next": ["每日探索_点外边缘_三下"],
         "$__mpe_code": { "position": { "x": 2300, "y": 60 } }
@@ -131,7 +131,7 @@
     "每日探索_点外边缘_三下": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [1120, 360, 4, 4],
+        "target": [1120, 360, 4, 4],
         "post_delay": 900,
         "next": ["每日探索_已回到关卡页", "每日探索_点外边缘_继续"],
         "$__mpe_code": { "position": { "x": 2450, "y": 60 } }
@@ -139,7 +139,7 @@
     "每日探索_点外边缘_继续": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [1120, 360, 4, 4],
+        "target": [1120, 360, 4, 4],
         "post_delay": 900,
         "next": ["每日探索_已回到关卡页", "每日探索_点外边缘_继续"],
         "timeout": 6000,

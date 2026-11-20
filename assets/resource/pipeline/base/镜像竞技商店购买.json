@@ -19,10 +19,8 @@
   },
   "镜像_唤醒": {
     "recognition": { "type": "DirectHit" },
-    "action": {
-      "type": "Click",
-      "target": [880, 250, 1, 1]
-    },
+    "action": "Click",
+        "target": [880, 250, 1, 1],
     "max_hit": 1,
     "post_delay": 1200,
     "next": ["镜像_出击", "[JumpBack]子任务_进入首页"]
@@ -54,20 +52,16 @@
   },
   "镜像_翻页": {
     "recognition": { "type": "DirectHit" },
-    "action": {
-      "type": "Click",
-      "target": [1203, 675, 1, 1]
-    },
+    "action": "Click",
+        "target": [1203, 675, 1, 1],
     "max_hit": 3,
     "post_delay": 1200,
     "next": ["镜像_模拟军演", "镜像_出击"]
   },
   "镜像_点镜像竞技": {
     "recognition": { "type": "DirectHit" },
-    "action": {
-      "type": "Click",
-      "target": [505, 432, 1, 1]
-    },
+    "action": "Click",
+        "target": [505, 432, 1, 1],
     "post_delay": 2500,
     "next": ["镜像_点商店兑换", "镜像_点镜像竞技"]
   },

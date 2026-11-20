@@ -1010,7 +1010,7 @@
     "主线刷取_返回主页": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [
+        "target": [
             220,
             45,
             4,
@@ -1302,7 +1302,7 @@
     "主线刷取_点外边缘_一下": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [
+        "target": [
             1120,
             360,
             4,
@@ -1322,7 +1322,7 @@
     "主线刷取_点外边缘_两下": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [
+        "target": [
             1120,
             360,
             4,
@@ -1342,7 +1342,7 @@
     "主线刷取_点外边缘_三下": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [
+        "target": [
             1120,
             360,
             4,
@@ -1363,7 +1363,7 @@
     "主线刷取_点外边缘_继续": {
         "recognition": "DirectHit",
         "action": "Click",
-        "roi": [
+        "target": [
             1120,
             360,
             4,

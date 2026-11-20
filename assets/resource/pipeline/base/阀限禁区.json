@@ -300,11 +300,9 @@
             }
         },
         "timeout": 5000,
-        "action": {
-            "type": "Custom",
-            "custom_action": "ui_confirm_cancel",
-            "custom_action_param": {}
-        },
+        "action": "Custom",
+        "custom_action": "ui_confirm_cancel",
+        "custom_action_param": {},
         "next": ["阀限禁区_仓满留帧"],
         "on_error": ["阀限禁区_仓满留帧"],
         "next_doc": "2026-11-09 实测：芯片仓满时点「开始行动」会弹「芯片仓已满，是否进行清理？取消/确定」，点取消后留在编队页、战斗不开始。清理会销毁芯片，绝不点确定；一律取消并留帧失败。"

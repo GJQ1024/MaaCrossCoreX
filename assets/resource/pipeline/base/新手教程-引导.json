@@ -350,7 +350,7 @@
 
     "引导_空槽": {
         "recognition": "DirectHit",
-        "roi": [515, 395, 40, 40],
+        "target": [515, 395, 40, 40],
         "action": "Click",
         "max_hit": 1,
         "timeout": 8000,
@@ -366,7 +366,6 @@
 
     "引导_拖入队伍": {
         "recognition": "DirectHit",
-        "roi": [830, 100, 60, 60],
         "action": "Swipe",
         "begin": [850, 119],
         "end": [631, 369],
@@ -403,7 +402,7 @@
 
     "引导_关浮层": {
         "recognition": "DirectHit",
-        "roi": [898, 448, 4, 4],
+        "target": [898, 448, 4, 4],
         "action": "Click",
         "max_hit": 1,
         "timeout": 8000,
@@ -419,7 +418,6 @@
 
     "引导_调整站位": {
         "recognition": "DirectHit",
-        "roi": [620, 270, 60, 60],
         "action": "Swipe",
         "begin": [642, 292],
         "end": [452, 210],
@@ -456,7 +454,7 @@
 
     "引导_返回_编队页": {
         "recognition": "DirectHit",
-        "roi": [74, 20, 40, 40],
+        "target": [74, 20, 40, 40],
         "action": "Click",
         "max_hit": 1,
         "timeout": 8000,
@@ -887,7 +885,7 @@
 
     "引导_返回_技能设置": {
         "recognition": "DirectHit",
-        "roi": [46, 28, 40, 40],
+        "target": [46, 28, 40, 40],
         "action": "Click",
         "max_hit": 1,
         "timeout": 8000,
@@ -969,7 +967,7 @@
 
     "引导_返回_任务页": {
         "recognition": "DirectHit",
-        "roi": [48, 20, 40, 40],
+        "target": [48, 20, 40, 40],
         "action": "Click",
         "max_hit": 1,
         "timeout": 8000,
